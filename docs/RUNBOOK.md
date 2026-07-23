@@ -233,8 +233,6 @@ prints your local credentials — **keep this output**, you'll paste values into
           DB URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
       Studio URL: http://127.0.0.1:54323
     Inbucket URL: http://127.0.0.1:54324
-        anon key: eyJhbGciOi... (a long JWT)
-service_role key: eyJhbGciOi... (NEVER put this in .env)
 ```
 
 (Ports come straight from `supabase/config.toml`: API `54321`, DB `54322`,
