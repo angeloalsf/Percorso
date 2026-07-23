@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Pencil, Plus, SearchX, Trash2, Wallet } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeftRight, CreditCard as CreditCardIcon, Pencil, Plus, SearchX, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,7 +36,7 @@ import {
 export function Transactions() {
   const t = useT()
   const lang = useLang()
-  const { accounts, categories, transactions } = useFinanceStore()
+  const { accounts, categories, transactions, creditCards, pendingTxFilter, setPendingTxFilter } = useFinanceStore()
   const currency = useProfile((s) => s.currency)
   const money = (v: number): string => formatCurrency(v, currency, lang)
 
@@ -45,7 +45,19 @@ export function Transactions() {
   const [filterMonth, setFilterMonth] = useState<string>('all')
   const [filterAccount, setFilterAccount] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
+  const [filterCategory, setFilterCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
+
+  // Apply a drill-down handed over from a dashboard chart click, then clear it.
+  useEffect(() => {
+    if (!pendingTxFilter) return
+    setFilterMonth(pendingTxFilter.month)
+    setFilterCategory(pendingTxFilter.categoryId === '' ? 'uncategorized' : pendingTxFilter.categoryId)
+    setFilterAccount('all')
+    setFilterType('all')
+    setSearch('')
+    setPendingTxFilter(null)
+  }, [pendingTxFilter, setPendingTxFilter])
 
   const months = useMemo(() => {
     const set = new Set(transactions.map((tx) => monthKey(tx.date)))
@@ -53,6 +65,7 @@ export function Transactions() {
   }, [transactions])
 
   const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+  const cardById = useMemo(() => new Map(creditCards.map((c) => [c.id, c])), [creditCards])
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
   const filtered = useMemo(() => {
@@ -63,11 +76,16 @@ export function Transactions() {
       .filter((tx) => filterAccount === 'all' || tx.accountId === filterAccount || tx.toAccountId === filterAccount)
       .filter((tx) => filterType === 'all' || tx.type === filterType)
       .filter((tx) => {
+        if (filterCategory === 'all') return true
+        if (filterCategory === 'uncategorized') return !tx.categoryId
+        return tx.categoryId === filterCategory
+      })
+      .filter((tx) => {
         if (!query) return true
         const category = tx.categoryId ? (categoryById.get(tx.categoryId)?.name ?? '') : ''
         return tx.note.toLowerCase().includes(query) || category.toLowerCase().includes(query)
       })
-  }, [transactions, filterMonth, filterAccount, filterType, search, categoryById])
+  }, [transactions, filterMonth, filterAccount, filterType, filterCategory, search, categoryById])
 
   const groups = useMemo(() => {
     const byDate = new Map<string, Transaction[]>()
@@ -90,13 +108,13 @@ export function Transactions() {
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold">{t('finance.tabTransactions')}</h3>
-        <Button size="sm" onClick={() => setEditing('new')} disabled={accounts.length === 0}>
+        <Button size="sm" onClick={() => setEditing('new')} disabled={accounts.length === 0 && creditCards.length === 0}>
           <Plus />
           {t('finance.addTransaction')}
         </Button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         <Select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
           <option value="all">{t('finance.allMonths')}</option>
           {months.map((m) => (
@@ -119,10 +137,19 @@ export function Transactions() {
           <option value="income">{t('finance.income')}</option>
           <option value="transfer">{t('finance.transfer')}</option>
         </Select>
+        <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <option value="all">{t('finance.allCategories')}</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+          <option value="uncategorized">{t('finance.uncategorized')}</option>
+        </Select>
         <Input value={search} placeholder={t('common.search')} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      {accounts.length === 0 ? (
+      {accounts.length === 0 && creditCards.length === 0 ? (
         <EmptyState icon={Wallet} title={t('finance.needAccountTitle')} hint={t('finance.needAccountHint')} />
       ) : groups.length === 0 ? (
         <EmptyState icon={SearchX} title={t('finance.noTransactionsTitle')} hint={t('finance.noTransactionsHint')} />
@@ -136,8 +163,10 @@ export function Transactions() {
               <List>
                 {dayTxs.map((tx) => {
                   const category = tx.categoryId ? categoryById.get(tx.categoryId) : undefined
-                  const account = accountById.get(tx.accountId)
+                  const account = tx.accountId ? accountById.get(tx.accountId) : undefined
+                  const card = tx.cardId ? cardById.get(tx.cardId) : undefined
                   const toAccount = tx.toAccountId ? accountById.get(tx.toAccountId) : undefined
+                  const sourceName = account?.name ?? card?.name ?? '—'
                   return (
                     <ListRow key={tx.id}>
                       <ColorDot
@@ -159,8 +188,9 @@ export function Transactions() {
                           )}
                         </div>
                         <div className="mt-0.5 flex items-center gap-2">
-                          <span className="truncate text-xs text-muted-foreground">
-                            {account?.name ?? '—'}
+                          <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+                            {card && <CreditCardIcon className="size-3 shrink-0" />}
+                            {sourceName}
                             {tx.note && tx.type !== 'transfer' && category ? ` · ${tx.note}` : ''}
                           </span>
                           <span
@@ -214,16 +244,30 @@ export function Transactions() {
 
 function TransactionForm({ transaction, onClose }: { transaction: Transaction | null; onClose: () => void }) {
   const t = useT()
-  const { accounts, categories } = useFinanceStore()
+  const { accounts, categories, creditCards } = useFinanceStore()
   const activeAccounts = accounts.filter((a) => !a.archived || a.id === transaction?.accountId)
+  const activeCards = creditCards.filter((c) => !c.archived || c.id === transaction?.cardId)
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? 'expense')
   const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '')
   const [date, setDate] = useState(transaction?.date ?? todayISO())
   const [accountId, setAccountId] = useState(transaction?.accountId ?? activeAccounts[0]?.id ?? '')
+  // Expense source, "acc:<id>" or "card:<id>" — expenses can be paid from an account OR a card.
+  const [paidWith, setPaidWith] = useState<string>(
+    transaction?.cardId
+      ? `card:${transaction.cardId}`
+      : transaction?.accountId
+        ? `acc:${transaction.accountId}`
+        : activeAccounts[0]
+          ? `acc:${activeAccounts[0].id}`
+          : activeCards[0]
+            ? `card:${activeCards[0].id}`
+            : ''
+  )
   const [toAccountId, setToAccountId] = useState(transaction?.toAccountId ?? '')
   const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? '')
   const [note, setNote] = useState(transaction?.note ?? '')
+  const [isRecurring, setIsRecurring] = useState(transaction?.isRecurring ?? false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -235,11 +279,20 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
       setError(t('finance.amountInvalid'))
       return
     }
-    if (!accountId) {
+    // Resolve the source: expenses use paidWith (account or card); income/transfer use accountId.
+    let srcAccountId: string | undefined
+    let srcCardId: string | undefined
+    if (type === 'expense') {
+      if (paidWith.startsWith('card:')) srcCardId = paidWith.slice(5)
+      else if (paidWith.startsWith('acc:')) srcAccountId = paidWith.slice(4)
+    } else {
+      srcAccountId = accountId
+    }
+    if (!srcAccountId && !srcCardId) {
       setError(t('finance.accountRequired'))
       return
     }
-    if (type === 'transfer' && (!toAccountId || toAccountId === accountId)) {
+    if (type === 'transfer' && (!toAccountId || toAccountId === srcAccountId)) {
       setError(t('finance.transferAccountsInvalid'))
       return
     }
@@ -247,10 +300,12 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
       date,
       type,
       amount: parsedAmount,
-      accountId,
+      ...(srcAccountId ? { accountId: srcAccountId } : {}),
+      ...(srcCardId ? { cardId: srcCardId } : {}),
       ...(type === 'transfer' ? { toAccountId } : {}),
       ...(type !== 'transfer' && categoryId ? { categoryId } : {}),
-      note: note.trim()
+      note: note.trim(),
+      isRecurring: type === 'transfer' ? false : isRecurring
     }
     setSubmitting(true)
     const result = transaction ? await updateTransaction(transaction.id, input) : await addTransaction(input)
@@ -299,15 +354,40 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
             <Field label={t('common.date')}>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label={type === 'transfer' ? t('finance.fromAccount') : t('finance.account')}>
-              <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-                {activeAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {type === 'expense' ? (
+              <Field label={t('finance.paidWith')}>
+                <Select value={paidWith} onChange={(e) => setPaidWith(e.target.value)}>
+                  {activeAccounts.length > 0 && (
+                    <optgroup label={t('finance.groupAccounts')}>
+                      {activeAccounts.map((a) => (
+                        <option key={a.id} value={`acc:${a.id}`}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {activeCards.length > 0 && (
+                    <optgroup label={t('finance.groupCards')}>
+                      {activeCards.map((c) => (
+                        <option key={c.id} value={`card:${c.id}`}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </Select>
+              </Field>
+            ) : (
+              <Field label={type === 'transfer' ? t('finance.fromAccount') : t('finance.account')}>
+                <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  {activeAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
             {type === 'transfer' ? (
               <Field label={t('finance.toAccount')}>
                 <Select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
@@ -336,6 +416,17 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
             <Field label={t('finance.note')} span2>
               <Input value={note} placeholder={t('finance.notePlaceholder')} onChange={(e) => setNote(e.target.value)} />
             </Field>
+            {type !== 'transfer' && (
+              <label className="flex items-center gap-2 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="size-4 accent-[var(--primary)]"
+                />
+                <span className="text-sm">{t('finance.recurringFlag')}</span>
+              </label>
+            )}
           </FormGrid>
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </DialogBody>

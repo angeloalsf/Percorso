@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet } from 'react-router-dom'
-import { CircleAlert, Settings, Wallet, Waypoints } from 'lucide-react'
+import { CircleAlert, Settings, Wallet } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
@@ -26,6 +26,8 @@ export function AppLayout() {
 function Shell({ userId }: { userId: string }) {
   const t = useT()
   const financeStatus = useFinanceStore((s) => s.status)
+  const fullName = useProfile((s) => s.fullName)
+  const firstName = fullName.trim().split(/\s+/)[0]
 
   useEffect(() => {
     void useFinanceStore.getState().load()
@@ -50,35 +52,13 @@ function Shell({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="min-h-dvh md:flex">
-      <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r p-4 md:flex">
-        <div className="mb-6 flex items-center gap-2 px-2 font-semibold">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/12 text-primary">
-            <Waypoints className="size-4" />
-          </span>
-          Percorso
-        </div>
-        <nav className="flex flex-col gap-1">
-          {NAV.map(({ to, icon: Icon, labelKey }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
-                )
-              }
-            >
-              <Icon className="size-4" />
-              {t(labelKey)}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
-
-      <main className="min-w-0 flex-1">
-        <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8 md:pb-12">
+    <div className="min-h-dvh">
+      <main className="min-w-0">
+        <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8">
+          <header className="mb-5 flex items-center justify-between gap-3 md:mb-6">
+            <span className="text-sm font-bold tracking-wide text-white">Percorso</span>
+            {firstName ? <span className="text-sm font-light text-muted-foreground">{firstName}</span> : null}
+          </header>
           {failed ? (
             <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-12 text-center">
               <CircleAlert className="size-7 text-destructive" />
@@ -95,7 +75,7 @@ function Shell({ userId }: { userId: string }) {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm">
         <div className="mx-auto grid max-w-md grid-cols-2">
           {NAV.map(({ to, icon: Icon, labelKey }) => (
             <NavLink

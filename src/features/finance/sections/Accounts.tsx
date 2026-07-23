@@ -38,8 +38,8 @@ const TYPE_KEYS: Record<AccountType, TKey> = {
   checking: 'finance.accountChecking',
   savings: 'finance.accountSavings',
   cash: 'finance.accountCash',
-  card: 'finance.accountCard',
-  investment: 'finance.accountInvestment'
+  investment: 'finance.accountInvestment',
+  consorcio: 'finance.accountConsorcio'
 }
 
 export function Accounts() {

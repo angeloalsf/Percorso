@@ -13,10 +13,12 @@ interface DonutChartProps {
   centerLabel?: string
   centerSub?: string
   formatValue?: (value: number) => string
+  /** When set, arcs and legend rows become clickable and report the segment index. */
+  onSegmentClick?: (index: number) => void
 }
 
 /** Dependency-free donut chart with a legend. */
-export function DonutChart({ segments, size = 168, centerLabel, centerSub, formatValue }: DonutChartProps) {
+export function DonutChart({ segments, size = 168, centerLabel, centerSub, formatValue, onSegmentClick }: DonutChartProps) {
   const total = segments.reduce((sum, s) => sum + s.value, 0)
   const radius = size / 2 - 10
   const stroke = 16
@@ -25,10 +27,11 @@ export function DonutChart({ segments, size = 168, centerLabel, centerSub, forma
 
   let offset = 0
   const arcs = segments
-    .filter((s) => s.value > 0)
-    .map((s) => {
+    .map((s, index) => ({ s, index }))
+    .filter(({ s }) => s.value > 0)
+    .map(({ s, index }) => {
       const fraction = total > 0 ? s.value / total : 0
-      const arc = { ...s, fraction, start: offset }
+      const arc = { ...s, index, fraction, start: offset }
       offset += fraction
       return arc
     })
@@ -50,6 +53,8 @@ export function DonutChart({ segments, size = 168, centerLabel, centerSub, forma
             strokeDashoffset={-arc.start * circumference}
             strokeLinecap="butt"
             transform={`rotate(-90 ${center} ${center})`}
+            onClick={onSegmentClick ? () => onSegmentClick(arc.index) : undefined}
+            style={onSegmentClick ? { cursor: 'pointer' } : undefined}
           >
             <title>{`${arc.label}: ${formatValue ? formatValue(arc.value) : arc.value}`}</title>
           </circle>
@@ -83,6 +88,7 @@ export function DonutChart({ segments, size = 168, centerLabel, centerSub, forma
       <div className="min-w-36 flex-1">
         <ChartLegend
           column
+          onItemClick={onSegmentClick}
           items={segments.map((s) => ({
             label: s.label,
             color: s.color,

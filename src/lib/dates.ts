@@ -27,8 +27,35 @@ export function addDays(iso: string, days: number): string {
   return toISODate(d)
 }
 
+export function addMonths(iso: string, months: number): string {
+  const d = parseISODate(iso)
+  d.setMonth(d.getMonth() + months)
+  return toISODate(d)
+}
+
 export function monthKey(iso: string): string {
   return iso.slice(0, 7)
+}
+
+/** ISO date for `day` of the given year / 0-based month, clamped to the month's length. */
+export function isoForDay(year: number, month0: number, day: number): string {
+  const lastDay = new Date(year, month0 + 1, 0).getDate()
+  return toISODate(new Date(year, month0, Math.min(day, lastDay)))
+}
+
+/** Shift a `YYYY-MM` month key by `delta` months. */
+export function shiftMonthKey(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(y, (m ?? 1) - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** How far through the current calendar month we are (local time). */
+export function monthPacing(): { day: number; total: number; remaining: number } {
+  const now = new Date()
+  const total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const day = now.getDate()
+  return { day, total, remaining: total - day }
 }
 
 export function currentMonthKey(): string {
