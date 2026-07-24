@@ -25,7 +25,9 @@ export const en = {
   },
   errors: {
     nameRequired: 'A name is required.',
-    loadFailed: 'Could not load your data.'
+    loadFailed: 'Could not load your data.',
+    crashTitle: 'Something went wrong.',
+    crashBody: 'The app hit an unexpected error. Reloading usually fixes it.'
   },
   toasts: {
     added: 'Added',

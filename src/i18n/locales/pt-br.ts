@@ -24,7 +24,9 @@ export const ptBR: typeof en = {
   },
   errors: {
     nameRequired: 'O nome é obrigatório.',
-    loadFailed: 'Não foi possível carregar seus dados.'
+    loadFailed: 'Não foi possível carregar seus dados.',
+    crashTitle: 'Algo deu errado.',
+    crashBody: 'O app encontrou um erro inesperado. Recarregar geralmente resolve.'
   },
   toasts: {
     added: 'Adicionado',

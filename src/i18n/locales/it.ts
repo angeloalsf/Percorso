@@ -24,7 +24,9 @@ export const it: typeof en = {
   },
   errors: {
     nameRequired: 'Il nome è obbligatorio.',
-    loadFailed: 'Impossibile caricare i tuoi dati.'
+    loadFailed: 'Impossibile caricare i tuoi dati.',
+    crashTitle: 'Qualcosa è andato storto.',
+    crashBody: "L'app ha riscontrato un errore imprevisto. Ricaricare di solito risolve il problema."
   },
   toasts: {
     added: 'Aggiunto',
