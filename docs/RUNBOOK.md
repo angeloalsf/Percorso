@@ -263,9 +263,23 @@ named `supabase_<service>_percorso` — `percorso` is `project_id` in
 
 ### Apply the migrations (and seed data) — the clean-slate command
 
-The project's schema lives in `supabase/migrations/20260720120000_init.sql`
-(creates `profiles`, `accounts`, `categories`, `transactions`, `budgets`, all
-with RLS, plus the `public.is_admin()` function and the signup trigger).
+The project's schema lives in `supabase/migrations/` — the init migration
+creates `profiles`, `accounts`, `categories`, `transactions` and `budgets`, all
+with RLS, plus the `public.is_admin()` function and the signup trigger; later
+migrations add `goals`, `bills` and `credit_cards`. That directory is the source
+of truth and the only thing the CLI applies.
+
+> To read the whole schema as it stands today without replaying migrations one
+> by one, see `supabase/schema-full.sql` — a consolidated snapshot of every
+> table, policy, function, trigger and index. It is documentation, not a
+> migration: never apply it to a database that already has migrations.
+>
+> ⚠️ It is also a **destructive rebuild script**. It can be run repeatedly, but
+> only because it `drop table … cascade`s every table first — so running it
+> erases all profiles, accounts, transactions, budgets, goals and bills, for
+> every user. Local dev and throwaway databases only; reseed afterwards with
+> `supabase/seed/*.sql`. To change a schema whose data you want to keep, write a
+> migration.
 
 The simplest, most reliable way to (re)build the local DB to a known state:
 
@@ -282,16 +296,16 @@ enabled = true
 sql_paths = ["./seed/admin.sql", "./seed/test-data.sql"]
 ```
 
-…the two seeds below run automatically at the end of every reset. You'll see
+…those two seeds run automatically at the end of every reset. You'll see
 `NOTICE:  Seeded admin user …` and `NOTICE:  Seeded test user …` in the output.
 
 > If you ever want migrations **without** wiping data or running seeds, use
 > `npx supabase migration up`. For everyday local dev, `db reset` is what you
 > want.
 
-### What the two seed scripts insert
+### What the seed scripts insert
 
-Both live under `supabase/seed/` and are **local/test only** (they create real
+The first two live under `supabase/seed/` and are **local/test only** (they create real
 `auth.users` rows with bcrypt passwords, which only works as the Postgres
 superuser — i.e. via `db reset`, `psql`, or a throwaway project's SQL editor).
 
@@ -303,18 +317,31 @@ superuser — i.e. via `db reset`, `psql`, or a throwaway project's SQL editor).
 
 **`supabase/seed/test-data.sql`** — one test user + a full demo dataset:
 - `auth.users` + identity for `test@percorso.local`, password `test-percorso-123`.
-- **4 accounts** (Main checking, Savings, Wallet, Credit card).
+- **4 bank accounts** (Main checking, Savings, Wallet, Car consórcio) — credit
+  cards are no longer accounts.
+- **1 credit card** (Nubank, closes on the 20th, due the 10th) whose purchases
+  carry `card_id` and no `account_id`, so the Cards screen shows an open invoice
+  and the app's lazy bill generator turns each closed cycle into a bill on load.
 - **10 categories** (8 expense, 2 income).
-- **~6 months of transactions**: monthly salary + freelance income, a realistic
-  basket of ~11 recurring expenses per month, a few very recent expenses, and a
+- **~6 months of transactions**: monthly salary + freelance income, a basket of
+  bank expenses plus card purchases each month, a few very recent expenses, and a
   monthly checking→savings transfer. Dates are generated relative to
-  `CURRENT_DATE`, so the dashboard's current month, 6-month cash flow, and budget
-  progress are always populated.
+  `CURRENT_DATE`, so the dashboard's current month, 6-month cash flow, card
+  cycles and budget progress are always populated.
 - **7 budgets** (groceries is deliberately over its limit, to show an exceeded
   budget).
+- **3 goals** (one tracking the Savings account's live balance, one manual with a
+  deadline, one already met) and **4 bills** (overdue, due soon, paid, upcoming)
+  so the due-date alerts fire.
 
 Both seeds are **idempotent** — re-running them deletes and re-creates their own
 rows, so `db reset` is always safe to repeat.
+
+**`supabase/seed/demo-data.sql`** — the same dataset for an **existing** user.
+It creates no `auth.users` row (edit the `uid` constant at the top to the target
+account's id), which makes it the one seed that is safe to run against a real
+project via the Dashboard SQL Editor. It is deliberately absent from
+`config.toml`'s `sql_paths`, so `db reset` never runs it.
 
 ### Running a seed by hand (optional)
 

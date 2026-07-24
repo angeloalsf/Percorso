@@ -17,7 +17,8 @@ Environment: copy `.env.example` → `.env` with `VITE_SUPABASE_URL` + `VITE_SUP
 ```
 supabase/
 ├── migrations/          # schema + RLS; apply via dashboard SQL editor or `supabase db push`
-└── seed/                # LOCAL-ONLY seed SQL (admin user, test-login + demo finance data)
+├── schema-full.sql      # consolidated snapshot of the CURRENT schema (never applied; see below)
+└── seed/                # admin user, test-login + demo finance data, production-safe demo data
 src/
 ├── main.tsx             # initTheme() → render <App> (StrictMode)
 ├── App.tsx              # AuthProvider + router: AuthGate(/login /signup) · AppLayout(/finances /settings)
@@ -52,11 +53,23 @@ src/
 - `profiles.is_admin` marks an admin. `public.is_admin()` (SECURITY DEFINER, reads profiles as owner to avoid RLS recursion) is OR-ed into every table's **SELECT** policy, so admins can READ all users' rows; insert/update/delete stay owner-only.
 - **Privilege-escalation guard**: users must not be able to set `is_admin` on their own row. RLS gates rows, not columns, so column grants restrict writable columns instead — `revoke update on profiles from authenticated; grant update (full_name, currency) …`. Admin status is assigned out-of-band by a seed/migration running as `postgres` (`supabase/seed/admin.sql`).
 
-### Seeds (local/test only — never run against production)
+### Schema changes — ALWAYS a three-part change
 
-- `supabase/seed/admin.sql` — provisions the admin user (auth.users + identity via pgcrypto, `is_admin = true`).
-- `supabase/seed/test-data.sql` — provisions `test@percorso.local` + a full realistic finance dataset (accounts, categories, months of transactions, budgets) to populate every Finance screen for visual QA.
-- Both create real `auth.users` rows with bcrypt passwords, which only works running as the postgres/superuser role (local `supabase db reset`, or the dashboard SQL editor on a throwaway project). Seed inserts set `user_id` explicitly because `auth.uid()` is NULL outside a request context.
+Every schema change (new table, new column, new constraint …) ships **three things in the same change**, never as an afterthought:
+
+1. **A new migration** under `supabase/migrations/`. Append-only — never edit a file already applied to a shared DB. This stays the source of truth for how the schema evolved and how to apply it incrementally (`supabase db push` / `db reset` read this directory *only*).
+2. **Updated seed data** — `supabase/seed/test-data.sql` **and** `supabase/seed/demo-data.sql`. A new feature never ships with empty seed data: after a fresh `supabase db reset` (or running the demo script), its screen must already be populated and testable. If the change alters existing columns, make sure the seeds still satisfy the new constraints — e.g. dropping `accounts.type = 'card'` meant reseeding cards into `credit_cards`.
+3. **Updated `supabase/schema-full.sql`** — one file holding the complete current CREATE-everything SQL (every table, RLS policy, function, trigger, grant, index), equivalent to concatenating every migration in order. It is a **convenience snapshot, never applied** to a database that has migrations; it exists so the whole schema can be read or recreated at a glance. It is idempotent — it `drop table … cascade`s everything first — which also makes it **destructive**: running it wipes every table it defines, so it is for local/throwaway databases only. `auth.users` is not dropped, but every `profiles` row and all finance data is.
+
+To verify #3 after editing: apply `migrations/*.sql` in order to one scratch database and `schema-full.sql` to another, then `pg_dump --schema-only --schema=public --no-owner` both and diff — they must be identical, column order included. (New columns therefore go at the **end** of the table in the snapshot, matching where `alter table … add column` put them.)
+
+### Seeds
+
+- `supabase/seed/admin.sql` — **local/test only.** Provisions the admin user (auth.users + identity via pgcrypto, `is_admin = true`).
+- `supabase/seed/test-data.sql` — **local/test only.** Provisions `test@percorso.local` + a full realistic finance dataset (accounts, categories, credit card, months of bank *and* card transactions, budgets, goals, bills) to populate every Finance screen for visual QA.
+- `supabase/seed/demo-data.sql` — **production-safe.** Same dataset for an **existing** user id, and creates no `auth.users` row, so it can be pasted into the Dashboard SQL editor of a real project. Not in `config.toml`'s `sql_paths` — it is run by hand.
+- The first two create real `auth.users` rows with bcrypt passwords, which only works running as the postgres/superuser role (local `supabase db reset`, or the dashboard SQL editor on a throwaway project). Seed inserts set `user_id` explicitly because `auth.uid()` is NULL outside a request context.
+- All three are idempotent: re-running deletes and recreates that user's rows, in FK-`restrict`-safe order (transactions → budgets → goals → bills → credit_cards → accounts → categories).
 
 ### i18n (unchanged engine from v1)
 
@@ -75,5 +88,5 @@ src/
 - TypeScript 7: no `baseUrl` — the `@` alias is `paths: {"@/*": ["./src/*"]}` + the same alias in `vite.config.ts`.
 - StrictMode double-mounts effects: store `load()` must stay idempotent (the `status` guard).
 - `supabase.ts` builds a placeholder client when env vars are missing so the app renders the setup notice instead of crashing — don't "fix" that into a throw.
-- Keep migrations append-only once applied to a shared DB: new schema changes go in NEW files under `supabase/migrations/`. (The init migration was edited in-branch before any shared apply.)
+- Keep migrations append-only once applied to a shared DB: new schema changes go in NEW files under `supabase/migrations/`. (The init migration was edited in-branch before any shared apply.) A migration is only half the change — see "Schema changes" above for the seed + `schema-full.sql` updates that ship with it.
 - Source files are UTF-8 with LF; avoid ad-hoc PowerShell text rewriting (encoding corruption) — use proper editor tooling.

@@ -85,7 +85,7 @@ npx supabase db reset       # applies migrations, then runs the seed scripts
 | File | What it seeds | Login |
 | --- | --- | --- |
 | [supabase/seed/admin.sql](supabase/seed/admin.sql) | An **admin** user (`is_admin = true`) | `admin@percorso.local` / `admin-percorso-123` |
-| [supabase/seed/test-data.sql](supabase/seed/test-data.sql) | A **test** user + full demo finance data (accounts, categories, ~6 months of transactions, a monthly transfer, budgets) to populate every Finance screen | `test@percorso.local` / `test-percorso-123` |
+| [supabase/seed/test-data.sql](supabase/seed/test-data.sql) | A **test** user + full demo finance data (accounts, categories, a credit card, ~6 months of bank *and* card transactions, a monthly transfer, budgets, goals, bills) to populate every Finance screen | `test@percorso.local` / `test-percorso-123` |
 
 You can also run either file by hand against a **throwaway** database:
 
@@ -94,6 +94,8 @@ psql "$DATABASE_URL" -f supabase/seed/test-data.sql   # local db URL, or a dispo
 ```
 
 (The seeds insert real `auth.users` rows with bcrypt passwords, so they must run as the `postgres`/superuser role — `db reset`, `psql`, or the Dashboard SQL Editor of a disposable project. Change the credentials before use.)
+
+**Populating a real account instead:** [supabase/seed/demo-data.sql](supabase/seed/demo-data.sql) loads the same dataset for an **existing** user (edit the `uid` at the top to the account's id, from Dashboard → Authentication → Users). It creates no `auth.users` row and no password, so it is safe to paste into a real project's SQL editor. It is deliberately *not* in `sql_paths`, so `db reset` never runs it.
 
 ### 7. Run
 
@@ -157,8 +159,9 @@ update public.profiles set is_admin = true where id = '<the-user-uuid>';
 
 ```
 supabase/
-├── migrations/        # schema + RLS (apply to your project)
-└── seed/              # LOCAL-ONLY: admin.sql (admin user) + test-data.sql (demo finance data)
+├── migrations/        # schema + RLS (apply to your project) — the source of truth
+├── schema-full.sql    # snapshot of the whole current schema (rebuild script — DESTRUCTIVE)
+└── seed/              # admin.sql + test-data.sql (LOCAL-ONLY) · demo-data.sql (production-safe)
 src/
 ├── main.tsx           # boot: theme init → render <App>
 ├── App.tsx            # router: /login /signup | /finances /settings
