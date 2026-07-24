@@ -112,7 +112,13 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family:
-      'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      'Inter var',
+      Inter,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      sans-serif;
   }
   /* Numbers align in tables and money columns. */
   .tabular {

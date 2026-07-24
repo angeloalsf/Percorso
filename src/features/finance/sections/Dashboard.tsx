@@ -135,7 +135,10 @@ export function Dashboard() {
 
   const netWorthTrend = useMemo(() => {
     const months = lastNMonthKeys(6)
-    return { labels: months.map((m) => formatMonthShort(m, lang)), values: netWorthSeries(accounts, transactions, months) }
+    return {
+      labels: months.map((m) => formatMonthShort(m, lang)),
+      values: netWorthSeries(accounts, transactions, months)
+    }
   }, [accounts, transactions, lang])
 
   const cashflow = useMemo(() => {
@@ -452,7 +455,10 @@ function DeltaChip({ pct, increaseGood }: { pct: number | null; increaseGood: bo
   return (
     <span
       title={t('finance.vsLastMonth')}
-      className={cn('inline-flex items-center gap-0.5 text-[11px] font-medium', good ? 'text-success' : 'text-destructive')}
+      className={cn(
+        'inline-flex items-center gap-0.5 text-[11px] font-medium',
+        good ? 'text-success' : 'text-destructive'
+      )}
     >
       <Arrow className="size-3" />
       {Math.round(Math.abs(pct))}%

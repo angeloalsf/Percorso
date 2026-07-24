@@ -29,8 +29,7 @@ export function LineChart({ labels, series, height = 170, yMin, yMax, area, form
   const lo = yMin ?? Math.min(...(values.length ? values : [0]), 0)
   const hi = Math.max(yMax ?? 0, ...(values.length ? values : [1]), lo + 1)
 
-  const xFor = (i: number): number =>
-    labels.length <= 1 ? width / 2 : (i / (labels.length - 1)) * (width - 16) + 8
+  const xFor = (i: number): number => (labels.length <= 1 ? width / 2 : (i / (labels.length - 1)) * (width - 16) + 8)
   const yFor = (v: number): number => topSpace + chartHeight - ((v - lo) / (hi - lo)) * chartHeight
 
   // Consecutive non-null runs become separate polyline segments.
@@ -115,14 +114,7 @@ export function LineChart({ labels, series, height = 170, yMin, yMax, area, form
           ))}
           {labels.map((label, i) =>
             i % labelStep === 0 ? (
-              <text
-                key={i}
-                x={xFor(i)}
-                y={height - 4}
-                textAnchor="middle"
-                fontSize={10}
-                fill="var(--muted-foreground)"
-              >
+              <text key={i} x={xFor(i)} y={height - 4} textAnchor="middle" fontSize={10} fill="var(--muted-foreground)">
                 {label}
               </text>
             ) : null

@@ -17,7 +17,11 @@ export function FinancePage() {
   const pendingTxFilter = useFinanceStore((s) => s.pendingTxFilter)
 
   // A dashboard chart drill-down asks to jump to the Transactions tab.
+  // TODO: derive `tab` from `pendingTxFilter` during render instead of
+  // syncing via effect (react-hooks/set-state-in-effect) — deferred, needs
+  // its own reviewed change since it touches the drill-down flow's behavior.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (pendingTxFilter) setTab('transactions')
   }, [pendingTxFilter])
 

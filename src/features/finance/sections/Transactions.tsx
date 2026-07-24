@@ -4,14 +4,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -49,8 +42,12 @@ export function Transactions() {
   const [search, setSearch] = useState('')
 
   // Apply a drill-down handed over from a dashboard chart click, then clear it.
+  // TODO: derive these filters from `pendingTxFilter` during render instead
+  // of syncing via effect (react-hooks/set-state-in-effect) — deferred, needs
+  // its own reviewed change since it touches the drill-down flow's behavior.
   useEffect(() => {
     if (!pendingTxFilter) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilterMonth(pendingTxFilter.month)
     setFilterCategory(pendingTxFilter.categoryId === '' ? 'uncategorized' : pendingTxFilter.categoryId)
     setFilterAccount('all')
@@ -108,7 +105,11 @@ export function Transactions() {
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold">{t('finance.tabTransactions')}</h3>
-        <Button size="sm" onClick={() => setEditing('new')} disabled={accounts.length === 0 && creditCards.length === 0}>
+        <Button
+          size="sm"
+          onClick={() => setEditing('new')}
+          disabled={accounts.length === 0 && creditCards.length === 0}
+        >
           <Plus />
           {t('finance.addTransaction')}
         </Button>
@@ -170,7 +171,9 @@ export function Transactions() {
                   return (
                     <ListRow key={tx.id}>
                       <ColorDot
-                        color={tx.type === 'transfer' ? 'var(--muted-foreground)' : (category?.color ?? 'var(--border)')}
+                        color={
+                          tx.type === 'transfer' ? 'var(--muted-foreground)' : (category?.color ?? 'var(--border)')
+                        }
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -207,7 +210,12 @@ export function Transactions() {
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center">
-                        <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(tx)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t('common.edit')}
+                          onClick={() => setEditing(tx)}
+                        >
                           <Pencil />
                         </Button>
                         <Button
@@ -414,7 +422,11 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
               </Field>
             )}
             <Field label={t('finance.note')} span2>
-              <Input value={note} placeholder={t('finance.notePlaceholder')} onChange={(e) => setNote(e.target.value)} />
+              <Input
+                value={note}
+                placeholder={t('finance.notePlaceholder')}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </Field>
             {type !== 'transfer' && (
               <label className="flex items-center gap-2 sm:col-span-2">

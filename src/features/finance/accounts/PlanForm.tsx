@@ -1,14 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useT } from '@/i18n'
@@ -209,15 +202,7 @@ function useSubmitState() {
   return { error, setError, submitting, setSubmitting, messageFor }
 }
 
-export function LoanForm({
-  accountId,
-  loan,
-  onClose
-}: {
-  accountId: string
-  loan: Loan | null
-  onClose: () => void
-}) {
+export function LoanForm({ accountId, loan, onClose }: { accountId: string; loan: Loan | null; onClose: () => void }) {
   const t = useT()
   const [fields, setFields] = useState<PlanFields>(initialFields(loan))
   const { error, setError, submitting, setSubmitting, messageFor } = useSubmitState()

@@ -18,10 +18,11 @@ This guide is **cross-platform** (Windows / macOS / Linux / WSL). Where a comman
 differs per OS, all variants are shown.
 
 > **Two terminology notes used throughout:**
+>
 > - "The **frontend**" / "the app" = the Vite React app on `http://localhost:5173`.
 > - "**Supabase**" (local) = the Docker container stack (Postgres, Auth, etc.) on
 >   ports `54321`–`54327`.
-> These are two separate things you start separately.
+>   These are two separate things you start separately.
 
 ---
 
@@ -42,14 +43,14 @@ differs per OS, all variants are shown.
 You need the tools below. Some are required, some optional depending on which
 sections you use.
 
-| Tool | Required for | Notes |
-| --- | --- | --- |
-| **Node.js 20+** | Everything (frontend, Supabase CLI via `npx`) | Ships with `npm`. Node **20.19+** or **22 LTS** recommended (Vite 8 / React 19). |
-| **npm** | Installing deps, running scripts | Comes bundled with Node. |
-| **Docker Desktop** (or Docker Engine + Compose) | Section 3 (local Supabase) | The Supabase CLI runs the whole local stack as Docker containers. |
-| **Supabase CLI** | Section 3 & 5 | This project is **not** pinned to a local copy — the README uses `npx supabase`. You can use `npx supabase …` (no install) or install the standalone CLI. |
-| **cloudflared** | Section 6 (public tunnel) | Optional. Only needed to share a temporary public URL. |
-| **psql** (PostgreSQL client) | Optional | Only if you want to run seed SQL by hand instead of via the CLI. |
+| Tool                                            | Required for                                  | Notes                                                                                                                                                     |
+| ----------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Node.js 20+**                                 | Everything (frontend, Supabase CLI via `npx`) | Ships with `npm`. Node **20.19+** or **22 LTS** recommended (Vite 8 / React 19).                                                                          |
+| **npm**                                         | Installing deps, running scripts              | Comes bundled with Node.                                                                                                                                  |
+| **Docker Desktop** (or Docker Engine + Compose) | Section 3 (local Supabase)                    | The Supabase CLI runs the whole local stack as Docker containers.                                                                                         |
+| **Supabase CLI**                                | Section 3 & 5                                 | This project is **not** pinned to a local copy — the README uses `npx supabase`. You can use `npx supabase …` (no install) or install the standalone CLI. |
+| **cloudflared**                                 | Section 6 (public tunnel)                     | Optional. Only needed to share a temporary public URL.                                                                                                    |
+| **psql** (PostgreSQL client)                    | Optional                                      | Only if you want to run seed SQL by hand instead of via the CLI.                                                                                          |
 
 ### Install commands
 
@@ -248,17 +249,17 @@ Studio `54323`, email tester `54324`.)
 named `supabase_<service>_percorso` — `percorso` is `project_id` in
 `config.toml`). In plain terms:
 
-| Container | Role | Port |
-| --- | --- | --- |
-| **Postgres** (`supabase_db_percorso`) | The actual database — all your tables, rows, RLS policies, functions, and even the auth/user tables live here. | 54322 |
-| **Auth / GoTrue** (`supabase_auth_…`) | Handles sign-up, login, passwords, sessions, and JWT tokens. | (behind API) |
-| **PostgREST** (`supabase_rest_…`) | Turns your Postgres tables into the REST API the app calls. Enforces RLS. | (behind API) |
-| **Realtime** (`supabase_realtime_…`) | Streams live DB changes over websockets (Percorso doesn't rely on it, but it's part of the stack). | (behind API) |
-| **Storage** (`supabase_storage_…`) | File/object storage API (unused by Percorso today). | (behind API) |
-| **Kong** (`supabase_kong_…`) | API gateway — the single front door (`:54321`) that routes to Auth/REST/Storage/Realtime. This is your `API URL`. | 54321 |
-| **Studio** (`supabase_studio_…`) | The web admin UI to browse tables, run SQL, inspect auth users. | 54323 |
-| **Inbucket/Mailpit** (`supabase_inbucket_…`) | A fake inbox — locally, "sent" emails aren't delivered; you read them here. | 54324 |
-| **Edge Runtime, Analytics, Vector, pg-meta, imgproxy** | Supporting services (Deno functions, logs, metadata). You rarely touch these directly. | — |
+| Container                                              | Role                                                                                                              | Port         |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------ |
+| **Postgres** (`supabase_db_percorso`)                  | The actual database — all your tables, rows, RLS policies, functions, and even the auth/user tables live here.    | 54322        |
+| **Auth / GoTrue** (`supabase_auth_…`)                  | Handles sign-up, login, passwords, sessions, and JWT tokens.                                                      | (behind API) |
+| **PostgREST** (`supabase_rest_…`)                      | Turns your Postgres tables into the REST API the app calls. Enforces RLS.                                         | (behind API) |
+| **Realtime** (`supabase_realtime_…`)                   | Streams live DB changes over websockets (Percorso doesn't rely on it, but it's part of the stack).                | (behind API) |
+| **Storage** (`supabase_storage_…`)                     | File/object storage API (unused by Percorso today).                                                               | (behind API) |
+| **Kong** (`supabase_kong_…`)                           | API gateway — the single front door (`:54321`) that routes to Auth/REST/Storage/Realtime. This is your `API URL`. | 54321        |
+| **Studio** (`supabase_studio_…`)                       | The web admin UI to browse tables, run SQL, inspect auth users.                                                   | 54323        |
+| **Inbucket/Mailpit** (`supabase_inbucket_…`)           | A fake inbox — locally, "sent" emails aren't delivered; you read them here.                                       | 54324        |
+| **Edge Runtime, Analytics, Vector, pg-meta, imgproxy** | Supporting services (Deno functions, logs, metadata). You rarely touch these directly.                            | —            |
 
 > Note: the connection pooler (`db.pooler`) is **disabled** in this project's
 > `config.toml`, and email confirmations are **off** locally
@@ -286,7 +287,7 @@ of truth and the only thing the CLI applies.
 > migration.
 >
 > It also **refuses to run** unless you uncomment the `set
-> percorso.allow_destructive = 'yes';` line near the top of the file first —
+percorso.allow_destructive = 'yes';` line near the top of the file first —
 > a guard against pasting it into the wrong project's SQL editor. See
 > "Destructive-script guard" below.
 
@@ -322,12 +323,14 @@ The first two live under `supabase/seed/` and are **local/test only** (they crea
 superuser — i.e. via `db reset`, `psql`, or a throwaway project's SQL editor).
 
 **`supabase/seed/admin.sql`** — one admin user:
+
 - `auth.users` + identity for `admin@percorso.local`, password `admin-percorso-123`.
 - Flips its `profiles.is_admin = true` (running as `postgres` bypasses the
   column-grant guard that normally blocks users from setting `is_admin`).
 - Admins can **read** every user's finance rows; writes stay owner-only.
 
 **`supabase/seed/test-data.sql`** — one test user + a full demo dataset:
+
 - `auth.users` + identity for `test@percorso.local`, password `test-percorso-123`.
 - **4 bank accounts** (Main checking, Savings, Wallet, Car consórcio) — credit
   cards are no longer accounts.
@@ -508,11 +511,11 @@ The Supabase client (`src/lib/supabase.ts`) is created with
 **Three env variables**, read by `src/lib/supabase.ts` (the first two) and
 `src/app/EnvBanner.tsx` (the third):
 
-| Variable | Local Docker | Real hosted project |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` | `http://127.0.0.1:54321` | `https://<your-project-ref>.supabase.co` |
+| Variable                 | Local Docker                   | Real hosted project                       |
+| ------------------------ | ------------------------------ | ----------------------------------------- |
+| `VITE_SUPABASE_URL`      | `http://127.0.0.1:54321`       | `https://<your-project-ref>.supabase.co`  |
 | `VITE_SUPABASE_ANON_KEY` | anon key from `supabase start` | anon / publishable key from the dashboard |
-| `VITE_ENV_LABEL` | `local` | `staging` or `production` |
+| `VITE_ENV_LABEL`         | `local`                        | `staging` or `production`                 |
 
 Vite loads env files **by mode**, not from a single `.env`
 (see [Vite: Env Variables and Modes](https://vite.dev/guide/env-and-mode.html)):
@@ -678,15 +681,15 @@ the browser's DevTools console.
 
 ### Common problems
 
-| Symptom | Likely cause & fix |
-| --- | --- |
-| App shows **"Supabase is not configured"** | An env file is missing/blank for the active mode — see Section 5. Set both `VITE_SUPABASE_*` vars, then **restart** `npm run dev`. |
-| Changed an env file but app still uses old backend | Vite only reads env files at startup — stop and re-run `npm run dev`. |
-| Login fails / redirect errors on LAN or tunnel URL | Add that exact origin to Supabase **Redirect URLs** (Sections 2, 5, 6). |
-| Test user logs in but screens are empty | Seed didn't run — `npx supabase db reset`. |
-| `supabase start` fails | Docker Desktop isn't running, or ports `54321–54327` are in use. Start Docker; free the ports or `npx supabase stop` a previous stack. |
+| Symptom                                                  | Likely cause & fix                                                                                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App shows **"Supabase is not configured"**               | An env file is missing/blank for the active mode — see Section 5. Set both `VITE_SUPABASE_*` vars, then **restart** `npm run dev`.                             |
+| Changed an env file but app still uses old backend       | Vite only reads env files at startup — stop and re-run `npm run dev`.                                                                                          |
+| Login fails / redirect errors on LAN or tunnel URL       | Add that exact origin to Supabase **Redirect URLs** (Sections 2, 5, 6).                                                                                        |
+| Test user logs in but screens are empty                  | Seed didn't run — `npx supabase db reset`.                                                                                                                     |
+| `supabase start` fails                                   | Docker Desktop isn't running, or ports `54321–54327` are in use. Start Docker; free the ports or `npx supabase stop` a previous stack.                         |
 | `npx supabase` spawns `CMD.EXE` / UNC-path warning (WSL) | Node/npm are resolving to Windows binaries from a WSL path. Run the CLI from the same OS as Docker — either fully inside WSL (Linux Node) or fully on Windows. |
-| Want a totally clean slate | `npx supabase stop --no-backup` then `npx supabase start` + `npx supabase db reset`. |
+| Want a totally clean slate                               | `npx supabase stop --no-backup` then `npx supabase start` + `npx supabase db reset`.                                                                           |
 
 ### Quick command reference
 

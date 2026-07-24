@@ -5,14 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ColorSwatches, PALETTE } from '@/components/ui/color-swatches'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -186,7 +179,12 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
         <DialogBody>
           <FormGrid>
             <Field label={t('finance.cardName')} span2 error={error ?? undefined}>
-              <Input value={name} placeholder={t('finance.cardNamePlaceholder')} onChange={(e) => setName(e.target.value)} autoFocus />
+              <Input
+                value={name}
+                placeholder={t('finance.cardNamePlaceholder')}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
             </Field>
             <Field label={t('finance.issuingAccount')} span2>
               <Select value={issuingAccountId} onChange={(e) => setIssuingAccountId(e.target.value)}>
@@ -199,10 +197,24 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
               </Select>
             </Field>
             <Field label={t('finance.closingDay')}>
-              <Input type="number" inputMode="numeric" min={1} max={31} value={closingDay} onChange={(e) => setClosingDay(e.target.value)} />
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={31}
+                value={closingDay}
+                onChange={(e) => setClosingDay(e.target.value)}
+              />
             </Field>
             <Field label={t('finance.dueDay')}>
-              <Input type="number" inputMode="numeric" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={31}
+                value={dueDay}
+                onChange={(e) => setDueDay(e.target.value)}
+              />
             </Field>
             <Field label={t('finance.creditLimitOptional')}>
               <Input

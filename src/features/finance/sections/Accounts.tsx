@@ -6,14 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ColorSwatches, PALETTE } from '@/components/ui/color-swatches'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -111,17 +104,12 @@ export function Accounts() {
                       {account.archived && <Badge>{t('finance.archived')}</Badge>}
                     </span>
                     <span
-                      className={cn(
-                        'tabular mt-0.5 block text-sm font-semibold',
-                        balance < 0 && 'text-destructive'
-                      )}
+                      className={cn('tabular mt-0.5 block text-sm font-semibold', balance < 0 && 'text-destructive')}
                     >
                       {money(balance)}
                     </span>
                   </span>
-                  {(productCount.get(account.id) ?? 0) > 0 && (
-                    <Badge>{productCount.get(account.id)}</Badge>
-                  )}
+                  {(productCount.get(account.id) ?? 0) > 0 && <Badge>{productCount.get(account.id)}</Badge>}
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 </button>
                 <div className="flex shrink-0 items-center">

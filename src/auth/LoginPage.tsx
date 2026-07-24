@@ -58,13 +58,7 @@ export function LoginPage() {
 
       <form className="flex flex-col gap-3.5" onSubmit={(e) => void submit(e)}>
         <Field label={t('auth.email')}>
-          <Input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label={t('auth.password')}>
           <Input

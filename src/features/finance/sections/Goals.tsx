@@ -4,14 +4,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -68,9 +61,16 @@ export function Goals() {
                   </div>
                   <div className="tabular mt-0.5 text-xs text-muted-foreground">
                     {money(progress)} / {money(goal.targetAmount)}
-                    {goal.targetDate ? ` · ${t('finance.goalTargetBy', { date: formatDate(goal.targetDate, lang, 'short') })}` : ''}
+                    {goal.targetDate
+                      ? ` · ${t('finance.goalTargetBy', { date: formatDate(goal.targetDate, lang, 'short') })}`
+                      : ''}
                   </div>
-                  <ProgressBar className="mt-2 max-w-sm" value={progress} max={goal.targetAmount} color="var(--primary)" />
+                  <ProgressBar
+                    className="mt-2 max-w-sm"
+                    value={progress}
+                    max={goal.targetAmount}
+                    color="var(--primary)"
+                  />
                 </div>
                 <div className="flex shrink-0 items-center">
                   <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(goal)}>
@@ -166,7 +166,12 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
         <DialogBody>
           <FormGrid>
             <Field label={t('finance.goalName')} span2>
-              <Input value={name} placeholder={t('finance.goalNamePlaceholder')} onChange={(e) => setName(e.target.value)} autoFocus />
+              <Input
+                value={name}
+                placeholder={t('finance.goalNamePlaceholder')}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
             </Field>
             <Field label={t('finance.targetAmount')}>
               <Input

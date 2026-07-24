@@ -56,6 +56,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
 ## 2. Architecture & code patterns
 
 ### ARCH-1 — Paginate the transactions load (row-cap truncation corrupts every total) — **High / M**
+
 - **Why:** `max_rows = 1000` (Supabase/PostgREST default and this repo's `config.toml`) caps
   every response. The store fetches all transactions unpaginated, and all financial figures are
   derived by summing those rows, so past ~1000 lifetime transactions the app shows wrong
@@ -73,6 +74,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   fix. Server-side aggregation is a larger project — not needed for v1.
 
 ### ARCH-2 — Add a top-level React error boundary — **High / S**
+
 - **Why:** There is no error boundary anywhere; any thrown render error blanks the whole SPA
   with no recovery. Not acceptable for a paid product.
 - **Where:** `src/App.tsx` (wrap the router), plus a new `src/app/ErrorBoundary.tsx`.
@@ -83,6 +85,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   `errors.crashBody` to all three locales. When `TOOL-9` (Sentry) lands, report caught errors.
 
 ### ARCH-3 — Reduce cross-section coupling: extract shared bill-pay UI — **Low / S**
+
 - **Why:** `Dashboard.tsx` imports `PayBillDialog` and `BillBadge` from `sections/Bills.tsx`.
   Sections importing each other's internals invites tangles as the app grows; `BillBadge`'s
   `BillDisplayState` also lives in `Bills.tsx`.
@@ -94,6 +97,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   change.
 
 ### ARCH-4 — Note (no action required): `load()` writes on the read path — **Low / — (document)**
+
 - **Why:** `load()` calls `syncCardBills()`, which issues insert/update/delete against `bills`
   during what reads as a fetch. This is intentional and documented (no background jobs), guarded
   by the `status` re-entry check and a `try/catch`. Flagged only so a future maintainer doesn't
@@ -105,6 +109,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
 ## 3. Modularization & file organization
 
 ### MOD-1 — Decide the `features/finance/` boundary before it grows further — **Medium / M**
+
 - **Why:** Everything lives under one `features/finance/` folder with a single 1133-line
   `store.ts` holding types, row-mappers, mutations for 9 entities, card-cycle logic, and all
   dashboard analytics. It's still readable, but it's the natural next thing to sag as features
@@ -126,6 +131,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   (they both name `features/finance/store.ts`).
 
 ### MOD-2 — Extract the shared list-row "drill/action" pattern — **Low / S**
+
 - **Why:** The tappable-row-with-side-actions markup is near-duplicated in `sections/Accounts.tsx`
   and `accounts/AccountDetailPage.tsx` (`DrillRow`). Minor duplication, easy to unify.
 - **Where:** `sections/Accounts.tsx` (account row), `accounts/AccountDetailPage.tsx` (`DrillRow`).
@@ -137,6 +143,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
 ## 4. Dead code / what can be removed
 
 ### DEAD-1 — Delete unused UI components `textarea.tsx` and `stat-card.tsx` — **Low / S**
+
 - **Why:** Both are imported by **zero** files (verified by grep across `src`). `StatCard` was
   superseded by the inline `MetricCard` in `Dashboard.tsx`; `Textarea` is unused because notes
   use single-line `Input`.
@@ -145,6 +152,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   `label.tsx` — it's used internally by `field.tsx`.
 
 ### DEAD-2 — Run a dead-code sweep with knip + ts-prune and clear what they surface — **Medium / S**
+
 - **Why:** The manual scan found the two files above; a tool will catch unused exports inside
   otherwise-used files (e.g. verify `toISODate`, `formatMonthLong` etc. are all still referenced)
   and unused deps. Worth doing once, then keeping in CI.
@@ -154,6 +162,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   Land after `DEAD-1` so the two obvious files aren't re-flagged.
 
 ### DEAD-3 — Fix `demo-data.sql` header/uid mismatch (production-safe seed points at the wrong id) — **Medium / S**
+
 - **Why:** The header comment says `Target user: Angelo / user_id: 45143c60-1ea8-4168-9dc6-0105c1f8cadf`
   but the actual code uses `uid := '0d9b6f1b-ee9c-4616-a0b7-93fd55269656'`. This is the one seed
   designed to run against a **real** database via the Dashboard SQL editor, so a stale/contradictory
@@ -166,6 +175,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   file. Remove the personal-name/id pairing. Confirm it still matches the current schema.
 
 ### DEAD-4 — No Electron / People leftovers remain — **Low / — (verified, no action)**
+
 - **Why:** Grepping `src` and `supabase` for `people`, `electron`, `ipcRenderer`, `relationship`
   returns nothing; no `console.*`/`debugger`/`TODO`/`FIXME` either. Migration cleanup is complete.
   Recorded so the follow-up session doesn't re-hunt for it.
@@ -175,6 +185,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
 ## 5. Dev vs. production separation (explicit priority)
 
 ### DP-1 — Establish an enforced env convention (`.env.local` for dev, never prod-by-default) — **High / M**
+
 - **Why:** There is exactly one `.env`, and it currently has the **hosted/production** URL
   uncommented with `localhost` commented out — so `npm run dev` today runs against the real
   project. Switching backends means editing comments in a gitignored file: error-prone and the
@@ -194,6 +205,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   file editing; pointing at prod is a deliberate, separate step.
 
 ### DP-2 — Add a visible non-production environment indicator in the UI — **High / S**
+
 - **Why:** Nothing tells you which backend you're on. A banner when **not** on production
   prevents "I thought this was local" mistakes (the exact class of the prior incident) and helps
   QA.
@@ -205,6 +217,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   `--warning` token. Add `VITE_ENV_LABEL` to `.env.example` and the env files from `DP-1`.
 
 ### DP-3 — Add a hard runtime guard to the destructive SQL scripts — **High / S**
+
 - **Why:** `schema-full.sql` (`drop table … cascade` on every table) and the seeds
   (`admin.sql`, `test-data.sql`) are documented as local-only but have **no runtime guard** — a
   paste into the wrong SQL editor wipes/recreates data. Documentation already failed once.
@@ -213,11 +226,12 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   variable check:
   `\if :{?percorso_allow_destructive} … \else \echo 'Refusing: set -v percorso_allow_destructive=1' \q \endif`
   (or a `do $$ begin if current_setting('percorso.allow_destructive', true) is distinct from 'yes'
-  then raise exception '…' end if; end $$;` block runnable in the Dashboard editor). Keep it copy-
+then raise exception '…' end if; end $$;` block runnable in the Dashboard editor). Keep it copy-
   pasteable. Document the opt-in flag in the file header and RUNBOOK. This does not replace `DP-4`
   — it's the cheap belt-and-braces.
 
 ### DP-4 — Stand up a disposable staging Supabase project — **Medium / M**
+
 - **Why:** Today there are two states: local Docker and production. There is nowhere to rehearse
   a migration/seed against realistic hosted infra before it touches real users. A second free
   Supabase project as staging is the highest-leverage risk reducer before launch.
@@ -228,6 +242,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   a staging static host. No app code change beyond env plumbing.
 
 ### DP-5 — Add a build/deploy story that distinguishes environments — **Medium / M**
+
 - **Why:** Deployment is "drop `dist/` on a static host" with no documented per-environment build,
   SPA-fallback config, or which env file feeds which deploy. Fine for a hobby app, thin for a
   product.
@@ -241,6 +256,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
 ## 6. What's missing / data-model completeness
 
 ### GAP-1 — Add a PWA manifest + icons (README claims installability) — **Medium / S**
+
 - **Why:** README says Percorso is "installable on a phone's home screen," but there is no
   `manifest.webmanifest`, no `public/` dir, and no icons — so "Add to Home Screen" produces a
   nameless, icon-less bookmark, not an installed app.
@@ -251,6 +267,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   required for install.
 
 ### GAP-2 — Fix `index.html` static `theme-color` and `lang` — **Low / S**
+
 - **Why:** `<meta name="theme-color" content="#0b0d10">` matches neither the runtime dark
   (`#16181d`) nor light (`#fbfbf9`) value in `prefs.ts` `THEME_COLORS` — so the very first paint
   (before JS runs `applyTheme`) flashes a wrong browser-chrome color. `<html lang="en">` is
@@ -261,6 +278,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   `document.documentElement.lang` (in `prefs.ts` `setLanguage` / a small effect) for a11y/SEO.
 
 ### GAP-3 — Complete form-validation edge cases (amount bounds, day/date sanity) — **Medium / M**
+
 - **Why:** Validation exists but is uneven: amounts are checked `> 0` yet not bounded to the DB's
   `numeric(14,2)` range; transfers block same-account but the UI can still submit a transfer with
   an empty `toAccountId` in some states; bill/goal dates aren't sanity-checked (e.g. past due
@@ -275,6 +293,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   `Field error=` and a trailing `<p>`). Standardize on one.
 
 ### GAP-4 — Add the missing index on `credit_cards.issuing_account_id` — **Low / S**
+
 - **Why:** `loans.account_id` and `consortiums.account_id` are indexed, but
   `credit_cards.issuing_account_id` is not, though it's the same display-grouping FK and is
   filtered by account in the drill-down. Postgres does not auto-index FK columns. Tiny, but it's
@@ -286,6 +305,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   satisfy it). Follow CLAUDE.md "Schema changes."
 
 ### GAP-5 — Verify/align password policy across client and Supabase — **Low / S**
+
 - **Why:** `SignupPage` enforces `password.length < 8`, but `config.toml` sets
   `minimum_password_length = 6` and no complexity requirement; the hosted project's setting is
   unknown. Client-stricter is harmless, but the policy should be intentional and consistent.
@@ -295,6 +315,7 @@ Task IDs are stable (e.g. `DP-1`) and referenced in the implementation order at 
   project so server and client agree; keep the friendly client message.
 
 ### GAP-6 — Loading/empty/error states are good; document the one intentional gap — **Low / — (verified)**
+
 - **Why:** Skeleton on load, retry panel on load-error, `EmptyState` on every list, per-mutation
   toasts — all present and consistent. The only absence is offline/connection-loss UX (mutations
   just toast an error), which is acceptable for v1. No action; recorded so it isn't re-audited.
@@ -308,6 +329,7 @@ versions at install time — pin what `npm i -D` resolves. Land `TOOL-1`/`TOOL-3
 cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`)._
 
 ### TOOL-1 — knip + ts-prune (dead code / unused deps) — **Medium / S**
+
 - **Why:** Catches unused files, exports, and dependencies continuously (found `textarea.tsx`,
   `stat-card.tsx` by hand — automate the rest).
 - **Install/run:** `npm i -D knip` then `npx knip`; `npx ts-prune` (no install needed) or
@@ -319,6 +341,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   Add scripts: `"knip": "knip"`, `"deadcode": "ts-prune"`. Feeds `DEAD-2`.
 
 ### TOOL-2 — GitHub Actions CI (typecheck + lint + build) — **High / S**
+
 - **Why:** Nothing currently enforces that `main` typechecks/builds. i18n correctness is literally
   the typecheck, so CI is also the translation gate.
 - **Install/run:** none — add `.github/workflows/ci.yml`.
@@ -335,24 +358,27 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
           with: { node-version: 20, cache: npm }
         - run: npm ci
         - run: npm run typecheck
-        - run: npm run lint        # after STD-1
+        - run: npm run lint # after STD-1
         - run: npm run build
   ```
   Extend with `npm test` once `TOOL-6` lands.
 
 ### TOOL-3 — madge (circular-dependency detection) — **Low / S**
+
 - **Why:** `Dashboard`↔`Bills` cross-imports (`ARCH-3`) and a future `store/` split (`MOD-1`)
   make cycles plausible; madge catches them cheaply.
 - **Install/run:** `npx madge --circular --extensions ts,tsx src` (optionally `npm i -D madge`,
   script `"madge": "madge --circular --extensions ts,tsx src"`). Add to CI as non-blocking first.
 
 ### TOOL-4 — vite-bundle-visualizer (bundle size) — **Low / S**
+
 - **Why:** No visibility into bundle composition (Supabase JS + Radix + lucide can add up);
   useful before launch to catch accidental bloat.
 - **Install/run:** `npx vite-bundle-visualizer` (analyzes the production build), or add
   `rollup-plugin-visualizer` to `vite.config.ts` behind an `ANALYZE` env flag.
 
 ### TOOL-5 — Accessibility: @axe-core/react (dev) + Lighthouse CI — **Medium / M**
+
 - **Why:** a11y is decent (Radix dialogs, native selects, SVG `<title>`s, `aria-label`ed icon
   buttons) but unverified. Automated checks catch contrast, label, and landmark regressions.
 - **Install/run:** `npm i -D @axe-core/react`; in `src/main.tsx`, dev-only:
@@ -366,6 +392,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   items it surfaces (tie `Field` errors via `aria-describedby`; `GAP-2` `lang`).
 
 ### TOOL-6 — Vitest unit tests, money logic first — **High / M**
+
 - **Why:** The correctness-critical code is pure and trivially testable, and has zero coverage.
   This is the highest-ROI testing investment for a money app.
 - **Install/run:** `npm i -D vitest @vitest/coverage-v8`; `vitest.config.ts` reusing the `@`
@@ -377,6 +404,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   pagination test from `ARCH-1`. Then date helpers in `lib/dates.ts` (month rollover, clamping).
 
 ### TOOL-7 — Playwright e2e for the critical flows — **Medium / L**
+
 - **Why:** Signup → login → add-transaction is the money path; regressions there are launch-
   blocking. Run against local Supabase (`DP-1`) so it's deterministic.
 - **Install/run:** `npm i -D @playwright/test` + `npx playwright install`; `playwright.config.ts`
@@ -385,6 +413,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   changes; create an account; pay a card bill. Wire into CI after it's stable.
 
 ### TOOL-8 — Dependabot — **Low / S**
+
 - **Why:** No automated dependency/security update flow; several deps are on fast-moving majors
   (Vite 8, React 19, Supabase JS 2, lucide 1).
 - **Install/run:** add `.github/dependabot.yml`:
@@ -392,17 +421,19 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   version: 2
   updates:
     - package-ecosystem: npm
-      directory: "/"
+      directory: '/'
       schedule: { interval: weekly }
       open-pull-requests-limit: 5
   ```
 
 ### TOOL-9 — Sentry (free tier) error tracking — **Medium / S**
+
 - **Why:** Post-launch you'll be blind to client errors without it; pairs with `ARCH-2`.
 - **Install/run:** `npm i @sentry/react`; init in `src/main.tsx` guarded by env so it's a no-op
   when the DSN is absent:
   ```ts
-  if (import.meta.env.VITE_SENTRY_DSN) Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, environment: import.meta.env.VITE_ENV_LABEL })
+  if (import.meta.env.VITE_SENTRY_DSN)
+    Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, environment: import.meta.env.VITE_ENV_LABEL })
   ```
   Add `VITE_SENTRY_DSN` to the env files (`DP-1`); report from the `ARCH-2` boundary.
 
@@ -411,6 +442,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
 ## 8. Standardization
 
 ### STD-1 — Add ESLint + Prettier and actually enforce them (Husky + lint-staged) — **High / M**
+
 - **Why:** There is **no** ESLint or Prettier config, yet `store.ts` carries
   `/* eslint-disable @typescript-eslint/no-explicit-any */` — lint was intended but never set up.
   Formatting consistency currently rides on discipline alone. This is the backbone of the
@@ -430,6 +462,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
      consider a typed row interface later, but keeping the scoped disable is acceptable.
 
 ### STD-2 — Naming/pattern consistency pass — **Low / S**
+
 - **Why:** Conventions are largely consistent (PascalCase components, camelCase app / snake_case
   DB with mapping isolated to `rowTo*`, kebab-case UI primitive files). Two small drifts: the
   in-form error UX is mixed (`Field error=` prop vs a trailing `<p className="text-destructive">`),
@@ -442,6 +475,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   to `SaveResult`.
 
 ### STD-3 — Fix stale in-code/doc comments — **Low / S**
+
 - **Why:** Small drifts erode trust in the (otherwise excellent) docs: `schema-full.sql` references
   `store.ensureCardBills` (actual name is `syncCardBills`); `Dashboard.tsx` line 53 says "Amber has
   no token, so it is inlined" but the code uses `var(--warning)`.
@@ -450,6 +484,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
 - **What to do:** Correct both comments. Trivial.
 
 ### STD-4 — Reconcile CLAUDE.md / README / RUNBOOK with the actual app — **Medium / S**
+
 - **Why:** Three doc↔code drifts, one of them actively misleading:
   - **RUNBOOK §5** still says the current `.env` is misconfigured with an `sb_secret_` key and an
     invalid URL. The real `.env` now has a valid `sb_publishable_` anon key and a valid hosted URL.
@@ -466,6 +501,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   "bottom nav at all breakpoints."
 
 ### STD-5 — (Depends on STD-4 decision) Implement the documented `md:+` sidebar — **Low / M**
+
 - **Why:** Only if the team wants the desktop UX the docs already promise. On wide screens the
   two-item bottom bar wastes the layout.
 - **Where:** `src/app/AppLayout.tsx` (nav markup), `src/index.css` (layout).
@@ -474,6 +510,7 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   "document the bottom bar" instead.
 
 ### STD-6 — i18n is structurally in sync; add a translation-completeness check — **Low / S**
+
 - **Why:** The typed engine guarantees the same **keys** across locales (verified: 270 each), but
   not that pt-BR/it strings were actually translated (a copy of an English value still compiles).
 - **Where:** `src/i18n/locales/*`; a small script or test.
@@ -490,6 +527,7 @@ composite-FK integrity, the admin model, and the privilege-escalation guard all 
 items below are hardening and hygiene, not holes.
 
 ### SEC-1 — Rotate/verify the anon key committed history & confirm no secret ever landed — **High / S**
+
 - **Why:** The current `.env` correctly uses a **publishable** key (`sb_publishable_…`), but the
   RUNBOOK documents that an `sb_secret_` key was previously present in `.env`. `.env` is
   gitignored (good), but a secret that ever existed on a machine/history should be treated as
@@ -501,6 +539,7 @@ items below are hardening and hygiene, not holes.
   / push protection on the repo. (No `service_role` usage exists in `src` — verified.)
 
 ### SEC-2 — Add automated RLS tests (prove isolation, don't assume it) — **Medium / M**
+
 - **Why:** The policies are correct by reading, but there's no test that user A cannot read/write
   user B's rows, that `is_admin` can't be self-set via the API, or that composite FKs block
   cross-user references. For a product holding financial data, this deserves a regression harness.
@@ -513,6 +552,7 @@ items below are hardening and hygiene, not holes.
   Run in CI against a throwaway local stack.
 
 ### SEC-3 — Set explicit session/security limits in the hosted project — **Low / S**
+
 - **Why:** Session lifetime, leaked-password protection, and rate limits are dashboard settings
   the repo can't fully assert. Defaults are reasonable but should be deliberate before launch.
 - **Where:** hosted Supabase dashboard (Auth → Sessions/Protection/Rate limits); note in README.
@@ -522,6 +562,7 @@ items below are hardening and hygiene, not holes.
   the chosen values.
 
 ### SEC-4 — Confirm `max_rows` interaction is a correctness issue, not a security one — **Low / — (cross-ref)**
+
 - **Why/Note:** The 1000-row cap (`ARCH-1`) is about correctness, not authorization — it never
   exposes another user's data (RLS still applies). Recorded here only so the security reviewer
   doesn't double-count it; the fix lives in `ARCH-1`.
@@ -534,37 +575,23 @@ Foundational safety and dev/prod separation first, then correctness, then the sa
 polish. Roughly sequential; items on the same line are independent.
 
 **Phase 0 — Stop-the-bleeding / foundations (do first)**
+
 1. `SEC-1` — verify/rotate keys, enable secret scanning.
 2. `DP-1` — env convention (dev defaults to local, prod is deliberate).
 3. `DP-2` — non-prod environment banner.
 4. `DP-3` — runtime guards on destructive SQL scripts.
 5. `STD-4` — fix the misleading RUNBOOK/CLAUDE/README drifts (esp. the `.env` section + sidebar).
 
-**Phase 1 — Correctness (money must be right)**
-6. `ARCH-1` — paginate transactions (with a test).
-7. `ARCH-2` — top-level error boundary.
-8. `DEAD-3` — fix `demo-data.sql` header/uid mismatch.
+**Phase 1 — Correctness (money must be right)** 6. `ARCH-1` — paginate transactions (with a test). 7. `ARCH-2` — top-level error boundary. 8. `DEAD-3` — fix `demo-data.sql` header/uid mismatch.
 
-**Phase 2 — Enforce quality (make regressions hard)**
-9. `STD-1` — ESLint + Prettier + Husky/lint-staged.
-10. `TOOL-2` — CI (typecheck + lint + build).
-11. `TOOL-6` — Vitest, money logic first (absorbs the `ARCH-1` test).
-12. `TOOL-1` + `DEAD-1` + `DEAD-2` — dead-code tools, then delete what they + the manual scan found.
-13. `SEC-2` — RLS isolation tests in CI.
+**Phase 2 — Enforce quality (make regressions hard)** 9. `STD-1` — ESLint + Prettier + Husky/lint-staged. 10. `TOOL-2` — CI (typecheck + lint + build). 11. `TOOL-6` — Vitest, money logic first (absorbs the `ARCH-1` test). 12. `TOOL-1` + `DEAD-1` + `DEAD-2` — dead-code tools, then delete what they + the manual scan found. 13. `SEC-2` — RLS isolation tests in CI.
 
-**Phase 3 — Product-ready polish**
-14. `DP-4` / `DP-5` — staging project + deploy story.
-15. `GAP-1` / `GAP-2` — PWA manifest + first-paint theme/lang fixes.
-16. `GAP-3` / `STD-2` — finish + standardize form validation and error display.
-17. `TOOL-9` / `TOOL-5` — Sentry + a11y checks (axe/Lighthouse).
-18. `TOOL-7` — Playwright e2e for signup/login/add-transaction.
+**Phase 3 — Product-ready polish** 14. `DP-4` / `DP-5` — staging project + deploy story. 15. `GAP-1` / `GAP-2` — PWA manifest + first-paint theme/lang fixes. 16. `GAP-3` / `STD-2` — finish + standardize form validation and error display. 17. `TOOL-9` / `TOOL-5` — Sentry + a11y checks (axe/Lighthouse). 18. `TOOL-7` — Playwright e2e for signup/login/add-transaction.
 
-**Phase 4 — Nice-to-have / opportunistic**
-19. `MOD-1` / `MOD-2` / `ARCH-3` — modularize `store.ts`, extract shared list/bill UI.
-20. `GAP-4` / `GAP-5` / `SEC-3` — index + password-policy + hosted session settings.
-21. `TOOL-3` / `TOOL-4` / `TOOL-8` — madge, bundle visualizer, Dependabot.
-22. `STD-3` / `STD-5` / `STD-6` — stale comments, optional sidebar, translation-completeness check.
+**Phase 4 — Nice-to-have / opportunistic** 19. `MOD-1` / `MOD-2` / `ARCH-3` — modularize `store.ts`, extract shared list/bill UI. 20. `GAP-4` / `GAP-5` / `SEC-3` — index + password-policy + hosted session settings. 21. `TOOL-3` / `TOOL-4` / `TOOL-8` — madge, bundle visualizer, Dependabot. 22. `STD-3` / `STD-5` / `STD-6` — stale comments, optional sidebar, translation-completeness check.
+
 ```
+
 ```
 
 _End of audit. Nothing in this pass modified application code; the only new file is this document._

@@ -7,7 +7,10 @@ function Card({ className, ...props }: React.ComponentProps<'div'>) {
 function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
-      className={cn('mb-3 flex items-center gap-1.5 text-sm font-semibold [&_svg]:size-3.5 [&_svg]:text-muted-foreground', className)}
+      className={cn(
+        'mb-3 flex items-center gap-1.5 text-sm font-semibold [&_svg]:size-3.5 [&_svg]:text-muted-foreground',
+        className
+      )}
       {...props}
     />
   )

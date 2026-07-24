@@ -4,14 +4,7 @@ import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -104,7 +97,9 @@ export function Bills() {
               <ListRow key={bill.id}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={`truncate text-sm font-medium ${dstate === 'paid' ? 'text-muted-foreground line-through' : ''}`}>
+                    <span
+                      className={`truncate text-sm font-medium ${dstate === 'paid' ? 'text-muted-foreground line-through' : ''}`}
+                    >
                       {bill.name}
                     </span>
                     <BillBadge state={dstate} />
@@ -115,7 +110,13 @@ export function Bills() {
                 </div>
                 <div className="flex shrink-0 items-center">
                   {bill.status === 'pending' && (
-                    <Button variant="ghost" size="icon" aria-label={t('finance.markPaid')} title={t('finance.markPaid')} onClick={() => void pay(bill)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('finance.markPaid')}
+                      title={t('finance.markPaid')}
+                      onClick={() => void pay(bill)}
+                    >
                       <Check />
                     </Button>
                   )}
@@ -184,7 +185,8 @@ export function PayBillDialog({ bill, onClose }: { bill: Bill; onClose: () => vo
         </DialogHeader>
         <DialogBody>
           <p className="mb-3 text-sm text-muted-foreground">
-            {bill.name} · <span className="tabular font-medium text-foreground">{formatCurrency(bill.amount, currency, lang)}</span>
+            {bill.name} ·{' '}
+            <span className="tabular font-medium text-foreground">{formatCurrency(bill.amount, currency, lang)}</span>
           </p>
           <Field label={t('finance.payFromAccount')}>
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
@@ -259,7 +261,12 @@ function BillForm({ bill, onClose }: { bill: Bill | null; onClose: () => void })
         <DialogBody>
           <FormGrid>
             <Field label={t('finance.billName')} span2>
-              <Input value={name} placeholder={t('finance.billNamePlaceholder')} onChange={(e) => setName(e.target.value)} autoFocus />
+              <Input
+                value={name}
+                placeholder={t('finance.billNamePlaceholder')}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+              />
             </Field>
             <Field label={t('finance.amount')}>
               <Input

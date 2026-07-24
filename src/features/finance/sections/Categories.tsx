@@ -5,14 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { ColorSwatches, PALETTE } from '@/components/ui/color-swatches'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -78,7 +71,12 @@ export function Categories() {
                 <ColorDot color={category.color} />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{category.name}</span>
                 <div className="flex shrink-0 items-center">
-                  <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(category)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('common.edit')}
+                    onClick={() => setEditing(category)}
+                  >
                     <Pencil />
                   </Button>
                   <Button
@@ -176,7 +174,11 @@ function CategoryForm({ category, onClose }: { category: Category | null; onClos
               <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             </Field>
             <Field label={t('common.type')}>
-              <Select value={type} disabled={category !== null} onChange={(e) => setType(e.target.value as CategoryType)}>
+              <Select
+                value={type}
+                disabled={category !== null}
+                onChange={(e) => setType(e.target.value as CategoryType)}
+              >
                 <option value="expense">{t('finance.expense')}</option>
                 <option value="income">{t('finance.income')}</option>
               </Select>

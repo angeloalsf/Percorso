@@ -150,11 +150,11 @@ function PlanDetail({ plan, money }: { plan: Loan | Consortium; money: (v: numbe
       </p>
       <ProgressBar className="mt-2" value={paid} max={plan.installmentsTotal} />
 
-      <p className="mt-3 text-sm text-muted-foreground">{t('finance.remainingAmount', { amount: money(planRemaining(plan)) })}</p>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {t('finance.remainingAmount', { amount: money(planRemaining(plan)) })}
+      </p>
       <p className="mt-1 text-sm text-muted-foreground">
-        {nextDue
-          ? t('finance.nextInstallment', { date: formatDate(nextDue, lang, 'medium') })
-          : t('finance.fullyPaid')}
+        {nextDue ? t('finance.nextInstallment', { date: formatDate(nextDue, lang, 'medium') }) : t('finance.fullyPaid')}
       </p>
       <p className="mt-3 text-xs text-muted-foreground">
         {t('finance.totalAmount')}: {money(plan.totalAmount)}

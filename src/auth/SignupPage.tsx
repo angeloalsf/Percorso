@@ -97,13 +97,7 @@ export function SignupPage() {
           />
         </Field>
         <Field label={t('auth.email')}>
-          <Input
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label={t('auth.password')}>
           <Input

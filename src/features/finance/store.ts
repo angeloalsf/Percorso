@@ -292,18 +292,17 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   load: async () => {
     if (get().status === 'loading' || get().status === 'ready') return
     set({ status: 'loading' })
-    const [accounts, categories, transactions, budgets, goals, bills, cards, loans, consortiums] =
-      await Promise.all([
-        supabase.from('accounts').select('*').order('created_at'),
-        supabase.from('categories').select('*').order('created_at'),
-        fetchAllTransactions(),
-        supabase.from('budgets').select('*').order('created_at'),
-        supabase.from('goals').select('*').order('created_at'),
-        supabase.from('bills').select('*').order('due_date'),
-        supabase.from('credit_cards').select('*').order('created_at'),
-        supabase.from('loans').select('*').order('created_at'),
-        supabase.from('consortiums').select('*').order('created_at')
-      ])
+    const [accounts, categories, transactions, budgets, goals, bills, cards, loans, consortiums] = await Promise.all([
+      supabase.from('accounts').select('*').order('created_at'),
+      supabase.from('categories').select('*').order('created_at'),
+      fetchAllTransactions(),
+      supabase.from('budgets').select('*').order('created_at'),
+      supabase.from('goals').select('*').order('created_at'),
+      supabase.from('bills').select('*').order('due_date'),
+      supabase.from('credit_cards').select('*').order('created_at'),
+      supabase.from('loans').select('*').order('created_at'),
+      supabase.from('consortiums').select('*').order('created_at')
+    ])
     if (
       accounts.error ||
       categories.error ||
@@ -914,11 +913,7 @@ export function nextCardDue(card: CreditCard, today: string = todayISO()): strin
  * A short look-back keeps a never-opened account from back-filling ancient
  * history all at once.
  */
-async function syncCardBills(
-  cards: CreditCard[],
-  transactions: Transaction[],
-  bills: Bill[]
-): Promise<Bill[]> {
+async function syncCardBills(cards: CreditCard[], transactions: Transaction[], bills: Bill[]): Promise<Bill[]> {
   const today = todayISO()
   let result = bills
 

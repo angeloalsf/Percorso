@@ -18,11 +18,7 @@ export const useProfile = create<ProfileState>((set) => ({
   currency: 'USD',
 
   load: async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('full_name, currency')
-      .eq('id', userId)
-      .maybeSingle()
+    const { data, error } = await supabase.from('profiles').select('full_name, currency').eq('id', userId).maybeSingle()
     if (error) throw error
     if (data) set({ fullName: data.full_name as string, currency: data.currency as string })
   },

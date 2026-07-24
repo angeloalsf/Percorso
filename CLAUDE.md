@@ -56,7 +56,7 @@ In practice, everything derived lives as a pure function in `features/finance/st
 
 **The one persisted exception, and why:** a card's invoice becomes a `bills` row, because a bill has to exist to be paid, alerted on and marked off. That is the only stored derived total, so `syncCardBills()` **re-derives it on every load** instead of only filling gaps — inserting a missing cycle, updating the amount when a purchase in a closed cycle was edited/added/deleted, and deleting the bill if the cycle is now empty. A **paid** bill is never restated: it records what was actually paid, which is history. Any future stored total must come with the same kind of reconciliation pass, documented next to it.
 
-When a feature is "done", check it against this: *is every number here computed from source data, or could it go stale?*
+When a feature is "done", check it against this: _is every number here computed from source data, or could it go stale?_
 
 ### Bank accounts and the products tied to them
 
@@ -81,7 +81,7 @@ When a feature is "done", check it against this: *is every number here computed 
 
 Every schema change (new table, new column, new constraint …) ships **three things in the same change**, never as an afterthought:
 
-1. **A new migration** under `supabase/migrations/`. Append-only — never edit a file already applied to a shared DB. This stays the source of truth for how the schema evolved and how to apply it incrementally (`supabase db push` / `db reset` read this directory *only*).
+1. **A new migration** under `supabase/migrations/`. Append-only — never edit a file already applied to a shared DB. This stays the source of truth for how the schema evolved and how to apply it incrementally (`supabase db push` / `db reset` read this directory _only_).
 2. **Updated seed data** — `supabase/seed/test-data.sql` **and** `supabase/seed/demo-data.sql`. A new feature never ships with empty seed data: after a fresh `supabase db reset` (or running the demo script), its screen must already be populated and testable. If the change alters existing columns, make sure the seeds still satisfy the new constraints — e.g. dropping `accounts.type = 'card'` meant reseeding cards into `credit_cards`.
 3. **Updated `supabase/schema-full.sql`** — one file holding the complete current CREATE-everything SQL (every table, RLS policy, function, trigger, grant, index), equivalent to concatenating every migration in order. It is a **convenience snapshot, never applied** to a database that has migrations; it exists so the whole schema can be read or recreated at a glance. It is idempotent — it `drop table … cascade`s everything first — which also makes it **destructive**: running it wipes every table it defines, so it is for local/throwaway databases only. `auth.users` is not dropped, but every `profiles` row and all finance data is.
 
@@ -90,7 +90,7 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 ### Seeds
 
 - `supabase/seed/admin.sql` — **local/test only.** Provisions the admin user (auth.users + identity via pgcrypto, `is_admin = true`).
-- `supabase/seed/test-data.sql` — **local/test only.** Provisions `test@percorso.local` + a full realistic finance dataset (accounts, categories, credit card, months of bank *and* card transactions, budgets, goals, bills) to populate every Finance screen for visual QA.
+- `supabase/seed/test-data.sql` — **local/test only.** Provisions `test@percorso.local` + a full realistic finance dataset (accounts, categories, credit card, months of bank _and_ card transactions, budgets, goals, bills) to populate every Finance screen for visual QA.
 - `supabase/seed/demo-data.sql` — **production-safe.** Same dataset for an **existing** user id, and creates no `auth.users` row, so it can be pasted into the Dashboard SQL editor of a real project. Not in `config.toml`'s `sql_paths` — it is run by hand.
 - The first two create real `auth.users` rows with bcrypt passwords, which only works running as the postgres/superuser role (local `supabase db reset`, or the dashboard SQL editor on a throwaway project). Seed inserts set `user_id` explicitly because `auth.uid()` is NULL outside a request context.
 - All three are idempotent: re-running deletes and recreates that user's rows, in FK-`restrict`-safe order (transactions → budgets → goals → bills → credit_cards → accounts → categories).
@@ -120,3 +120,4 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 ```
 
 After completing each task/todo item and confirming npm run typecheck passes, commit the change with a clear, conventional commit message before moving to the next task.
+```

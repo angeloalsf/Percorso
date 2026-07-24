@@ -24,8 +24,8 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
           </div>
           {!supabaseConfigured && (
             <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
-              Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code>, fill in
-              VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.
+              Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code>, fill in VITE_SUPABASE_URL
+              and VITE_SUPABASE_ANON_KEY, then restart the dev server.
             </p>
           )}
           {children}
@@ -47,10 +47,7 @@ export function GoogleMark() {
         fill="#34A853"
         d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.72-4.95H1.27v3.09A12 12 0 0 0 12 24Z"
       />
-      <path
-        fill="#FBBC05"
-        d="M5.28 14.29a7.21 7.21 0 0 1 0-4.58V6.62H1.27a12 12 0 0 0 0 10.76l4.01-3.09Z"
-      />
+      <path fill="#FBBC05" d="M5.28 14.29a7.21 7.21 0 0 1 0-4.58V6.62H1.27a12 12 0 0 0 0 10.76l4.01-3.09Z" />
       <path
         fill="#EA4335"
         d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44A11.98 11.98 0 0 0 1.27 6.62l4.01 3.09C6.22 6.88 8.87 4.77 12 4.77Z"

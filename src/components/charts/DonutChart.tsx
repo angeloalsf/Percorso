@@ -18,23 +18,29 @@ interface DonutChartProps {
 }
 
 /** Dependency-free donut chart with a legend. */
-export function DonutChart({ segments, size = 168, centerLabel, centerSub, formatValue, onSegmentClick }: DonutChartProps) {
+export function DonutChart({
+  segments,
+  size = 168,
+  centerLabel,
+  centerSub,
+  formatValue,
+  onSegmentClick
+}: DonutChartProps) {
   const total = segments.reduce((sum, s) => sum + s.value, 0)
   const radius = size / 2 - 10
   const stroke = 16
   const center = size / 2
   const circumference = 2 * Math.PI * radius
 
-  let offset = 0
   const arcs = segments
     .map((s, index) => ({ s, index }))
     .filter(({ s }) => s.value > 0)
-    .map(({ s, index }) => {
+    .reduce<Array<DonutSegment & { index: number; fraction: number; start: number }>>((acc, { s, index }) => {
       const fraction = total > 0 ? s.value / total : 0
-      const arc = { ...s, index, fraction, start: offset }
-      offset += fraction
-      return arc
-    })
+      const start = acc.length > 0 ? acc[acc.length - 1].start + acc[acc.length - 1].fraction : 0
+      acc.push({ ...s, index, fraction, start })
+      return acc
+    }, [])
 
   return (
     <div className="flex flex-wrap items-center gap-5">

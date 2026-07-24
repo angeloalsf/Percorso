@@ -21,7 +21,9 @@ export function ChartLegend({ items, column, onItemClick }: ChartLegendProps) {
           <>
             <span className="size-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
             <span className="truncate">{item.label}</span>
-            {item.value !== undefined && <span className="tabular ml-auto pl-2 text-muted-foreground">{item.value}</span>}
+            {item.value !== undefined && (
+              <span className="tabular ml-auto pl-2 text-muted-foreground">{item.value}</span>
+            )}
           </>
         )
         return onItemClick ? (
