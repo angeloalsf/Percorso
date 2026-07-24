@@ -3,7 +3,7 @@ import { addDays, addMonths, isoForDay, monthKey, parseISODate, shiftMonthKey, t
 import { newId } from '@/lib/id'
 import { supabase } from '@/lib/supabase'
 
-export type AccountType = 'checking' | 'savings' | 'cash' | 'investment' | 'consorcio'
+export type AccountType = 'checking' | 'savings' | 'cash' | 'investment'
 
 export interface Account {
   id: string
@@ -73,6 +73,37 @@ export interface Goal {
   /** When set, progress tracks this account's live balance instead of `savedAmount`. */
   accountId?: string
   savedAmount: number
+}
+
+/**
+ * A loan or a consórcio: a product tied to a bank account, not an account.
+ *
+ * INTENTIONALLY MINIMAL v1 — list/CRUD only. Unlike credit cards these do NOT
+ * generate bills and are NOT linked to payment transactions. Progress is the
+ * (`installmentsPaid`, `paidAsOf`) pair: `installmentsPaid` was true ON
+ * `paidAsOf`, and `installmentsPaidNow()` rolls it forward one per `dueDay`
+ * elapsed since. Replace that derivation first if real payment tracking lands.
+ */
+interface InstallmentPlan {
+  id: string
+  /** Display/grouping only — does NOT dictate which account installments are paid from. */
+  accountId?: string
+  name: string
+  totalAmount: number
+  installmentAmount: number
+  installmentsTotal: number
+  /** Baseline count, true as of `paidAsOf`. Read `installmentsPaidNow()` for today's. */
+  installmentsPaid: number
+  /** `YYYY-MM-DD`. */
+  paidAsOf: string
+  dueDay: number
+}
+
+export type Loan = InstallmentPlan
+
+export interface Consortium extends InstallmentPlan {
+  /** "Contemplado": the quota has been drawn and the asset released. */
+  contemplated: boolean
 }
 
 export type BillStatus = 'pending' | 'paid'
@@ -154,6 +185,28 @@ function rowToBill(r: any): Bill {
   }
 }
 
+function rowToInstallmentPlan(r: any): InstallmentPlan {
+  return {
+    id: r.id,
+    accountId: r.account_id ?? undefined,
+    name: r.name,
+    totalAmount: Number(r.total_amount),
+    installmentAmount: Number(r.installment_amount),
+    installmentsTotal: r.installments_total,
+    installmentsPaid: r.installments_paid,
+    paidAsOf: r.paid_as_of,
+    dueDay: r.due_day
+  }
+}
+
+function rowToLoan(r: any): Loan {
+  return rowToInstallmentPlan(r)
+}
+
+function rowToConsortium(r: any): Consortium {
+  return { ...rowToInstallmentPlan(r), contemplated: r.contemplated }
+}
+
 function rowToCreditCard(r: any): CreditCard {
   return {
     id: r.id,
@@ -184,6 +237,8 @@ interface FinanceState {
   goals: Goal[]
   bills: Bill[]
   creditCards: CreditCard[]
+  loans: Loan[]
+  consortiums: Consortium[]
   /** Transient (not persisted): set by a dashboard chart click, consumed by Transactions. */
   pendingTxFilter: PendingTxFilter | null
   load: () => Promise<void>
@@ -200,20 +255,25 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   goals: [],
   bills: [],
   creditCards: [],
+  loans: [],
+  consortiums: [],
   pendingTxFilter: null,
 
   load: async () => {
     if (get().status === 'loading' || get().status === 'ready') return
     set({ status: 'loading' })
-    const [accounts, categories, transactions, budgets, goals, bills, cards] = await Promise.all([
-      supabase.from('accounts').select('*').order('created_at'),
-      supabase.from('categories').select('*').order('created_at'),
-      supabase.from('transactions').select('*').order('date').order('created_at'),
-      supabase.from('budgets').select('*').order('created_at'),
-      supabase.from('goals').select('*').order('created_at'),
-      supabase.from('bills').select('*').order('due_date'),
-      supabase.from('credit_cards').select('*').order('created_at')
-    ])
+    const [accounts, categories, transactions, budgets, goals, bills, cards, loans, consortiums] =
+      await Promise.all([
+        supabase.from('accounts').select('*').order('created_at'),
+        supabase.from('categories').select('*').order('created_at'),
+        supabase.from('transactions').select('*').order('date').order('created_at'),
+        supabase.from('budgets').select('*').order('created_at'),
+        supabase.from('goals').select('*').order('created_at'),
+        supabase.from('bills').select('*').order('due_date'),
+        supabase.from('credit_cards').select('*').order('created_at'),
+        supabase.from('loans').select('*').order('created_at'),
+        supabase.from('consortiums').select('*').order('created_at')
+      ])
     if (
       accounts.error ||
       categories.error ||
@@ -221,7 +281,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       budgets.error ||
       goals.error ||
       bills.error ||
-      cards.error
+      cards.error ||
+      loans.error ||
+      consortiums.error
     ) {
       set({ status: 'error' })
       return
@@ -229,13 +291,12 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const creditCards = cards.data.map(rowToCreditCard)
     const txs = transactions.data.map(rowToTransaction)
     let billList = bills.data.map(rowToBill)
-    // Lazy bill generation: any card cycle that has closed without a bill yet
-    // gets one created now (no background job infrastructure in this project).
+    // Re-derive card invoice bills from the cycle's transactions (no background
+    // job infrastructure in this project, so it happens on load).
     try {
-      const generated = await ensureCardBills(creditCards, txs, billList)
-      if (generated.length > 0) billList = [...billList, ...generated]
+      billList = await syncCardBills(creditCards, txs, billList)
     } catch {
-      /* best-effort; a bill-gen failure must not block the dashboard */
+      /* best-effort; a bill-sync failure must not block the dashboard */
     }
     set({
       status: 'ready',
@@ -245,7 +306,9 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       budgets: budgets.data.map(rowToBudget),
       goals: goals.data.map(rowToGoal),
       bills: billList,
-      creditCards
+      creditCards,
+      loans: loans.data.map(rowToLoan),
+      consortiums: consortiums.data.map(rowToConsortium)
     })
   },
 
@@ -259,6 +322,8 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
       goals: [],
       bills: [],
       creditCards: [],
+      loans: [],
+      consortiums: [],
       pendingTxFilter: null
     }),
 
@@ -307,11 +372,13 @@ export async function setAccountArchived(id: string, archived: boolean): Promise
   return 'ok'
 }
 
-/** `in-use` when transactions, goals, or cards still reference the account. */
+/** `in-use` when transactions, goals, cards, loans or consórcios reference the account. */
 export async function deleteAccount(id: string): Promise<DeleteResult> {
   if (state().transactions.some((tx) => tx.accountId === id || tx.toAccountId === id)) return 'in-use'
   if (state().goals.some((g) => g.accountId === id)) return 'in-use'
   if (state().creditCards.some((c) => c.issuingAccountId === id)) return 'in-use'
+  if (state().loans.some((l) => l.accountId === id)) return 'in-use'
+  if (state().consortiums.some((c) => c.accountId === id)) return 'in-use'
   const { error } = await supabase.from('accounts').delete().eq('id', id)
   if (error) return error.code === '23503' ? 'in-use' : 'error'
   patch({ accounts: state().accounts.filter((a) => a.id !== id) })
@@ -646,6 +713,114 @@ export async function deleteCard(id: string): Promise<DeleteResult> {
   return 'ok'
 }
 
+/* --------------------- loans & consórcios (minimal v1) -------------------- */
+/*
+ * See the InstallmentPlan doc comment: list/CRUD only, no bill generation and
+ * no payment linking. Both tables share a shape, so the row builder and the
+ * progress derivation are shared and only `contemplated` differs.
+ */
+
+export type LoanInput = Omit<Loan, 'id'>
+export type ConsortiumInput = Omit<Consortium, 'id'>
+
+function planRow(id: string, input: LoanInput) {
+  return {
+    id,
+    account_id: input.accountId ?? null,
+    name: input.name,
+    total_amount: input.totalAmount,
+    installment_amount: input.installmentAmount,
+    installments_total: input.installmentsTotal,
+    installments_paid: input.installmentsPaid,
+    paid_as_of: input.paidAsOf,
+    due_day: input.dueDay
+  }
+}
+
+/**
+ * Installments paid as of `today`: the stored baseline plus one for every
+ * `dueDay` that has come round since `paidAsOf`, capped at the total. This is
+ * what every progress bar reads — `installmentsPaid` alone goes stale.
+ */
+export function installmentsPaidNow(plan: InstallmentPlan, today: string = todayISO()): number {
+  if (today <= plan.paidAsOf) return plan.installmentsPaid
+  const from = parseISODate(plan.paidAsOf)
+  const to = parseISODate(today)
+  const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
+  // Count the due dates falling in (paidAsOf, today].
+  let elapsed = 0
+  for (let i = 0; i <= months; i++) {
+    const due = isoForDay(from.getFullYear(), from.getMonth() + i, plan.dueDay)
+    if (due > plan.paidAsOf && due <= today) elapsed++
+  }
+  return Math.min(plan.installmentsTotal, plan.installmentsPaid + elapsed)
+}
+
+/** Remaining balance: unpaid installments × the installment amount. */
+export function planRemaining(plan: InstallmentPlan, today?: string): number {
+  const paid = installmentsPaidNow(plan, today)
+  return Math.max(0, (plan.installmentsTotal - paid) * plan.installmentAmount)
+}
+
+/** Next due date: the next `dueDay` on-or-after today. Null once fully paid. */
+export function planNextDue(plan: InstallmentPlan, today: string = todayISO()): string | null {
+  if (installmentsPaidNow(plan, today) >= plan.installmentsTotal) return null
+  const d = parseISODate(today)
+  const thisMonth = isoForDay(d.getFullYear(), d.getMonth(), plan.dueDay)
+  return thisMonth >= today ? thisMonth : isoForDay(d.getFullYear(), d.getMonth() + 1, plan.dueDay)
+}
+
+export async function addLoan(input: LoanInput): Promise<SaveResult> {
+  const loan: Loan = { ...input, id: newId() }
+  const { error } = await supabase.from('loans').insert(planRow(loan.id, input))
+  if (error) return 'error'
+  patch({ loans: [...state().loans, loan] })
+  return 'ok'
+}
+
+export async function updateLoan(id: string, input: LoanInput): Promise<SaveResult> {
+  const { id: _, ...row } = planRow(id, input)
+  const { error } = await supabase.from('loans').update(row).eq('id', id)
+  if (error) return 'error'
+  patch({ loans: state().loans.map((l) => (l.id === id ? { ...l, ...input } : l)) })
+  return 'ok'
+}
+
+export async function deleteLoan(id: string): Promise<DeleteResult> {
+  const { error } = await supabase.from('loans').delete().eq('id', id)
+  if (error) return error.code === '23503' ? 'in-use' : 'error'
+  patch({ loans: state().loans.filter((l) => l.id !== id) })
+  return 'ok'
+}
+
+export async function addConsortium(input: ConsortiumInput): Promise<SaveResult> {
+  const consortium: Consortium = { ...input, id: newId() }
+  const { error } = await supabase
+    .from('consortiums')
+    .insert({ ...planRow(consortium.id, input), contemplated: input.contemplated })
+  if (error) return 'error'
+  patch({ consortiums: [...state().consortiums, consortium] })
+  return 'ok'
+}
+
+export async function updateConsortium(id: string, input: ConsortiumInput): Promise<SaveResult> {
+  const { id: _, ...row } = planRow(id, input)
+  const { error } = await supabase
+    .from('consortiums')
+    .update({ ...row, contemplated: input.contemplated })
+    .eq('id', id)
+  if (error) return 'error'
+  patch({ consortiums: state().consortiums.map((c) => (c.id === id ? { ...c, ...input } : c)) })
+  return 'ok'
+}
+
+export async function deleteConsortium(id: string): Promise<DeleteResult> {
+  const { error } = await supabase.from('consortiums').delete().eq('id', id)
+  if (error) return error.code === '23503' ? 'in-use' : 'error'
+  patch({ consortiums: state().consortiums.filter((c) => c.id !== id) })
+  return 'ok'
+}
+
 /* -------------------------- card billing cycles -------------------------- */
 
 /** The most recent closing date on-or-before `today` — the current cycle's start. */
@@ -691,21 +866,31 @@ export function nextCardDue(card: CreditCard, today: string = todayISO()): strin
 }
 
 /**
- * Lazy bill generation. For each active card, any recently-closed cycle that
- * has no bill yet (deduped by card + due date) gets a `bills` row created with
- * the cycle's total and due date. A short look-back keeps a never-checked
- * account from back-filling ancient history all at once.
+ * Reconciles each active card's recently-closed cycles with the `bills` table.
+ *
+ * A card invoice is the ONLY derived total this app persists, because a bill
+ * has to exist as a row to be paid, alerted on and marked off. That makes it
+ * the one place a stored number could drift from the transactions behind it,
+ * so this runs on every load and re-derives rather than only filling gaps
+ * (see CLAUDE.md → "Derived values"):
+ *
+ *   • no bill for a closed cycle yet  → insert it;
+ *   • bill exists and the cycle total has changed (a purchase in it was
+ *     edited, added or deleted) → update the amount to match;
+ *   • bill exists but the cycle is now empty → delete the phantom bill;
+ *   • bill is already PAID → left untouched. That records what was actually
+ *     paid, which is history, not a derived value.
+ *
+ * A short look-back keeps a never-opened account from back-filling ancient
+ * history all at once.
  */
-async function ensureCardBills(
+async function syncCardBills(
   cards: CreditCard[],
   transactions: Transaction[],
-  existingBills: Bill[]
+  bills: Bill[]
 ): Promise<Bill[]> {
   const today = todayISO()
-  const created: Bill[] = []
-  const alreadyBilled = (cardId: string, due: string): boolean =>
-    existingBills.some((b) => b.cardId === cardId && b.dueDate === due) ||
-    created.some((b) => b.cardId === cardId && b.dueDate === due)
+  let result = bills
 
   for (const card of cards) {
     if (card.archived) continue
@@ -718,16 +903,34 @@ async function ensureCardBills(
           total += tx.amount
         }
       }
-      if (total <= 0) continue
       const due = dueForClosing(closing, card.dueDay)
-      if (alreadyBilled(card.id, due)) continue
-      const input: BillInput = { name: card.name, amount: total, dueDate: due, status: 'pending', recurring: false, cardId: card.id }
-      const id = newId()
-      const { error } = await supabase.from('bills').insert(billRow(id, input))
-      if (!error) created.push({ ...input, id })
+      const existing = result.find((b) => b.cardId === card.id && b.dueDate === due)
+
+      if (existing?.status === 'paid') continue
+
+      if (!existing) {
+        if (total <= 0) continue
+        const input: BillInput = {
+          name: card.name,
+          amount: total,
+          dueDate: due,
+          status: 'pending',
+          recurring: false,
+          cardId: card.id
+        }
+        const id = newId()
+        const { error } = await supabase.from('bills').insert(billRow(id, input))
+        if (!error) result = [...result, { ...input, id }]
+      } else if (total <= 0) {
+        const { error } = await supabase.from('bills').delete().eq('id', existing.id)
+        if (!error) result = result.filter((b) => b.id !== existing.id)
+      } else if (existing.amount !== total) {
+        const { error } = await supabase.from('bills').update({ amount: total }).eq('id', existing.id)
+        if (!error) result = result.map((b) => (b.id === existing.id ? { ...b, amount: total } : b))
+      }
     }
   }
-  return created
+  return result
 }
 
 /* -------------------------------- derived -------------------------------- */

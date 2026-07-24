@@ -7,6 +7,8 @@ import { AppLayout } from '@/app/AppLayout'
 import { SettingsPage } from '@/app/SettingsPage'
 import { Toaster } from '@/components/ui/toaster'
 import { FinancePage } from '@/features/finance/FinancePage'
+import { AccountDetailPage } from '@/features/finance/accounts/AccountDetailPage'
+import { AccountItemPage } from '@/features/finance/accounts/AccountItemPage'
 
 export default function App() {
   return (
@@ -21,6 +23,9 @@ export default function App() {
           {/* Protected: redirect to /login without a session. */}
           <Route element={<AppLayout />}>
             <Route path="/finances" element={<FinancePage />} />
+            {/* Bank-account drill-down: list → account (tabs) → one item. */}
+            <Route path="/finances/accounts/:accountId" element={<AccountDetailPage />} />
+            <Route path="/finances/accounts/:accountId/:kind/:itemId" element={<AccountItemPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/finances" replace />} />

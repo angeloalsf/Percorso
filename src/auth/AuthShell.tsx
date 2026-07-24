@@ -23,7 +23,7 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps) {
             <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           </div>
           {!supabaseConfigured && (
-            <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+            <p className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
               Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code>, fill in
               VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.
             </p>

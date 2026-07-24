@@ -2,9 +2,10 @@
 -- Percorso — TEST DATA SEED  ·  LOCAL / TEST ONLY  ·  NEVER RUN IN PRODUCTION
 -- ============================================================================
 -- Provisions ONE loginnable test account plus a full, realistic Finance
--- dataset (accounts, categories, ~6 months of income/expense transactions, a
--- monthly transfer, and budgets) — enough to populate every Finance screen
--- for visual QA.
+-- dataset (accounts, categories, a credit card, a loan, a consórcio, ~6 months
+-- of income/expense transactions, a monthly transfer, budgets, goals and bills)
+-- — enough to populate every Finance screen for visual QA, including each bank
+-- account's Cartões / Empréstimos / Consórcios detail tabs.
 --
 -- Creates a real auth.users row with a bcrypt password, so it only works run
 -- as the postgres/superuser role:
@@ -52,10 +53,12 @@ declare
   acc_checking  constant uuid := 'a0000000-0000-4000-8000-000000000001';
   acc_savings   constant uuid := 'a0000000-0000-4000-8000-000000000002';
   acc_cash      constant uuid := 'a0000000-0000-4000-8000-000000000003';
-  acc_consorcio constant uuid := 'a0000000-0000-4000-8000-000000000005';
+  acc_invest    constant uuid := 'a0000000-0000-4000-8000-000000000004';
 
-  -- credit card (separate entity from bank accounts)
+  -- products tied to a bank account, each with its own table (never an account)
   card_nubank   constant uuid := 'd0000000-0000-4000-8000-000000000001';
+  loan_car      constant uuid := '90000000-0000-4000-8000-000000000001';
+  cons_house    constant uuid := '90000000-0000-4000-8000-000000000002';
 
   cat_groceries constant uuid := 'c0000000-0000-4000-8000-000000000001';
   cat_dining    constant uuid := 'c0000000-0000-4000-8000-000000000002';
@@ -76,6 +79,8 @@ begin
   delete from public.goals        where user_id = uid;  -- goals FK accounts (restrict)
   delete from public.bills        where user_id = uid;  -- bills FK cards (restrict)
   delete from public.credit_cards where user_id = uid;  -- cards FK accounts (restrict)
+  delete from public.loans        where user_id = uid;  -- loans FK accounts (restrict)
+  delete from public.consortiums  where user_id = uid;  -- consórcios FK accounts (restrict)
   delete from public.accounts     where user_id = uid;
   delete from public.categories   where user_id = uid;
   delete from auth.users          where id = uid;  -- cascades profile + identity
@@ -108,16 +113,37 @@ begin
 
   update public.profiles set full_name = 'Test User', currency = 'USD' where id = uid;
 
-  -- ---- accounts (bank accounts only — credit cards live in credit_cards) ----
+  -- ---- accounts (bank accounts ONLY — cards, loans and consórcios each have
+  --       their own table and are shown inside an account's detail view) ----
   insert into public.accounts (id, user_id, name, type, initial_balance, color, archived) values
-    (acc_checking,  uid, 'Main checking', 'checking',  2500.00, '#60a5fa', false),
-    (acc_savings,   uid, 'Savings',       'savings',   8000.00, '#34d399', false),
-    (acc_cash,      uid, 'Wallet',        'cash',       150.00, '#fbbf24', false),
-    (acc_consorcio, uid, 'Car consórcio', 'consorcio', 6000.00, '#22d3ee', false);
+    (acc_checking, uid, 'Main checking', 'checking',   2500.00, '#60a5fa', false),
+    (acc_savings,  uid, 'Savings',       'savings',    8000.00, '#34d399', false),
+    (acc_cash,     uid, 'Wallet',        'cash',        150.00, '#fbbf24', false),
+    (acc_invest,   uid, 'Investments',   'investment', 5000.00, '#a78bfa', false);
 
   -- ---- credit card (issuing account is display-only; closes on the 20th, due the 10th) ----
   insert into public.credit_cards (id, user_id, name, issuing_account_id, closing_day, due_day, credit_limit, color, archived) values
     (card_nubank, uid, 'Nubank', acc_checking, 20, 10, 5000.00, '#c084fc', false);
+
+  -- ---- loan + consórcio under Main checking, so its detail view has one of
+  --       each. paid_as_of is backdated 3 months so the app's derived progress
+  --       (installments_paid + due_days elapsed) visibly advances past the
+  --       stored baseline. ----
+  insert into public.loans (
+    id, user_id, account_id, name, total_amount, installment_amount,
+    installments_total, installments_paid, paid_as_of, due_day
+  ) values (
+    loan_car, uid, acc_checking, 'Financiamento do carro',
+    48000.00, 1000.00, 48, 12, (current_date - interval '3 months')::date, 15
+  );
+
+  insert into public.consortiums (
+    id, user_id, account_id, name, total_amount, installment_amount,
+    installments_total, installments_paid, paid_as_of, contemplated, due_day
+  ) values (
+    cons_house, uid, acc_checking, 'Consórcio imóvel',
+    120000.00, 1250.00, 96, 30, (current_date - interval '3 months')::date, false, 10
+  );
 
   -- ---- categories ----
   insert into public.categories (id, user_id, name, type, color) values

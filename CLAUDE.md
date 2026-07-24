@@ -21,12 +21,14 @@ supabase/
 └── seed/                # admin user, test-login + demo finance data, production-safe demo data
 src/
 ├── main.tsx             # initTheme() → render <App> (StrictMode)
-├── App.tsx              # AuthProvider + router: AuthGate(/login /signup) · AppLayout(/finances /settings)
+├── App.tsx              # AuthProvider + router: AuthGate(/login /signup) · AppLayout(/finances
+│                        #   /finances/accounts/:accountId[/:kind/:itemId] /settings)
 ├── auth/                # AuthProvider (session context), AuthGate, LoginPage, SignupPage,
 │                        #   AuthShell (shared layout + "not configured" notice), errors.ts (AuthError → TKey)
 ├── app/                 # AppLayout: session gate → data gate → shell (bottom nav at all breakpoints)
 │                        # SettingsPage: profile name, language, theme, sign-out
-├── features/finance/    # store.ts (Supabase-backed Zustand) + FinancePage + sections/ (5 tabs)
+├── features/finance/    # store.ts (Supabase-backed Zustand) + FinancePage + sections/ (tabs)
+│                        #   + accounts/ = the routed bank-account drill-down (see below)
 ├── components/ui/       # shadcn-style primitives; components/charts/ = dependency-free SVG
 ├── i18n/                # typed engine + locales/{en,pt-br,it}.ts
 ├── state/               # prefs.ts (language+theme → localStorage), profile.ts (profiles row)
@@ -40,6 +42,28 @@ src/
 - **DB is the authority on integrity**: RLS scopes writes to `auth.uid() = user_id`; composite FKs `(id, user_id)` prevent cross-user references; account/category deletes are FK-`restrict`ed (client pre-checks for a friendly `in-use` toast).
 - **Naming seam**: DB is snake_case (`to_account_id`, `initial_balance`, `monthly_limit`), app is camelCase (`toAccountId`, `initialBalance`, `monthlyLimit`) — mapping lives ONLY in the `rowTo*` helpers inside the store.
 - **Profile** (`profiles` table: `full_name`, `currency`, `is_admin`) is created by a DB trigger on signup (email and Google both). Display currency lives there, not in the finance store.
+
+### Derived values — ALWAYS computed, never cached
+
+**Every number that can be derived from transactions (or from another source-of-truth table) is computed from that source on every read. Never store it as a separately-maintained total that has to be kept in sync.** The failure this prevents: a transaction changes and some other screen keeps showing the old number.
+
+Two kinds of numbers, and the line between them is what matters:
+
+- **Inputs the user owns** — set by them, edited by them, derived from nothing: `accounts.initial_balance` (what you had when you started), `credit_cards.credit_limit`, `loans/consortiums.total_amount` (the contracted principal) and their `(installments_paid, paid_as_of)` baseline, `goals.saved_amount` for manually-tracked goals, `budgets.monthly_limit`, a hand-entered `bills.amount`.
+- **Running values derived from those inputs + transactions since** — an account's current balance, a card's invoice, spend-so-far, net worth, installment progress. These are **never** editable to "correct" them. If one looks wrong, the fix is a transaction, not the number.
+
+In practice, everything derived lives as a pure function in `features/finance/store.ts`, taking the already-loaded rows and returning a fresh result: `accountBalance`, `cardOpenInvoice`, `nextCardDue`, `spendingByCategory`, `monthTotals`, `netWorthAsOf`, `netWorthSeries`, `pctChange`, `goalProgress`, `installmentsPaidNow`, `planRemaining`, `planNextDue`, `billAlerts`, `computeInsights`, `detectRecurring`, `computeHealthScore`. Screens call them inside `useMemo` keyed on the store slices, so a transaction edit re-renders every dependent number at once. New derived values go here too — not into a column, and not into component state.
+
+**The one persisted exception, and why:** a card's invoice becomes a `bills` row, because a bill has to exist to be paid, alerted on and marked off. That is the only stored derived total, so `syncCardBills()` **re-derives it on every load** instead of only filling gaps — inserting a missing cycle, updating the amount when a purchase in a closed cycle was edited/added/deleted, and deleting the bill if the cycle is now empty. A **paid** bill is never restated: it records what was actually paid, which is history. Any future stored total must come with the same kind of reconciliation pass, documented next to it.
+
+When a feature is "done", check it against this: *is every number here computed from source data, or could it go stale?*
+
+### Bank accounts and the products tied to them
+
+- An `accounts` row is money you **hold** — `checking | savings | cash | investment`. Anything you **owe or subscribe to** is a separate table linked by an account id that is **display/grouping only** and never dictates which account pays: `credit_cards.issuing_account_id`, `loans.account_id`, `consortiums.account_id`. Two account types were removed as this became clear: `'card'` (credit-cards migration) and `'consorcio'` (loans/consortiums migration, which also converts any leftover consórcio account into a `consortiums` row).
+- The Contas bancárias tab is a **three-level drill-down**, and levels 2 and 3 are real routes so they deep-link and work with browser back: list (`sections/Accounts`) → `/finances/accounts/:accountId` (`accounts/AccountDetailPage`, sub-tabs Cartões · Empréstimos · Consórcios) → `/finances/accounts/:accountId/:kind/:itemId` (`accounts/AccountItemPage`). The other Finance tabs remain local `useState`, not routes. Both pages `<Navigate>` up a level when the id no longer resolves.
+- The top-level Cartões tab stays the flat all-cards list and is where cards are **created** (it also holds cards with no issuing account); the account's Cartões sub-tab only lists that account's cards. Loans and consórcios are created from within the account, since that is their only home.
+- **`loans` / `consortiums` are an intentionally minimal v1**: list/CRUD only, with none of the credit-card machinery (no bill generation into `bills`, no payment linking). Progress follows the derived-value rule above: `(installments_paid, paid_as_of)` is the user-owned **input** — the count that was true on that date — and `store.installmentsPaidNow()` derives today's count from it by rolling forward one per `due_day` elapsed, exactly as `accountBalance` derives from `initial_balance`. Nothing writes a progress number back. Replace that derivation first if real payment tracking is added.
 
 ### Auth & session
 
@@ -79,6 +103,8 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 ### CSS / UI conventions
 
 - Tailwind v4 (`@tailwindcss/vite`), tokens as CSS variables in `src/index.css` (`--background`, `--primary`, …, mapped via `@theme inline`), class-based dark mode (`.dark` on `<html>`, `@custom-variant dark`).
+- **`color-scheme` is what themes NATIVE UI**, and it is set alongside the tokens (`light` on `:root`, `dark` on `.dark`). The `.dark` class only restyles our own elements; the browser's own widgets — the `<select>` dropdown list, the date picker calendar, checkboxes, scrollbars, autofill — follow `color-scheme` and nothing else. Since Percorso keeps native `<select>`s on purpose, dropping it makes an open dropdown render as a stark white panel over a dark dialog. Corollary: **don't hand-invert native control internals**; that only compensates for a missing `color-scheme` and double-applies once it's present (this is why `Input` no longer inverts the calendar indicator).
+- **Use a semantic token, never a raw palette color.** Every status color exists as a themed pair: `--primary`, `--destructive`, `--success`, `--warning`, `--muted-foreground`. A hardcoded hex can't adapt — `#f59e0b` for "attention" measured 2.15:1 on the light background, below even the 3.0 icon threshold, while looking fine in the dark mode it was picked in.
 - **Mobile-first**: base styles target ~375 px; scale up with `sm:`/`md:`/`lg:`. Bottom nav at all breakpoints (no sidebar yet — deferred, see `STD-5`). Forms are single-column on phones (`FormGrid`), dialogs are bottom sheets on phones and centered modals from `sm:` (`components/ui/dialog.tsx`). Native `<select>` on purpose — best mobile UX.
 - Feedback rules (kept from v1): every mutation toasts, every delete goes through `<ConfirmDialog>`, every list has an `<EmptyState>`.
 - Dates are local `YYYY-MM-DD` strings via `lib/dates.ts` — never `new Date(isoString)` on a date-only string. Postgres `date` columns round-trip as those strings.
@@ -90,3 +116,7 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 - `supabase.ts` builds a placeholder client when env vars are missing so the app renders the setup notice instead of crashing — don't "fix" that into a throw.
 - Keep migrations append-only once applied to a shared DB: new schema changes go in NEW files under `supabase/migrations/`. (The init migration was edited in-branch before any shared apply.) A migration is only half the change — see "Schema changes" above for the seed + `schema-full.sql` updates that ship with it.
 - Source files are UTF-8 with LF; avoid ad-hoc PowerShell text rewriting (encoding corruption) — use proper editor tooling.
+
+```
+
+After completing each task/todo item and confirming npm run typecheck passes, commit the change with a clear, conventional commit message before moving to the next task.

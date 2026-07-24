@@ -58,7 +58,7 @@ function Shell({ userId }: { userId: string }) {
       <main className="min-w-0">
         <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8">
           <header className="mb-5 flex items-center justify-between gap-3 md:mb-6">
-            <span className="text-sm font-bold tracking-wide text-white">Percorso</span>
+            <span className="text-sm font-bold tracking-wide text-foreground">Percorso</span>
             {firstName ? <span className="text-sm font-light text-muted-foreground">{firstName}</span> : null}
           </header>
           {failed ? (

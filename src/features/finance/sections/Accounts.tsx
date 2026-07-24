@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Archive, ArchiveRestore, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Archive, ArchiveRestore, ChevronRight, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,14 +39,14 @@ const TYPE_KEYS: Record<AccountType, TKey> = {
   checking: 'finance.accountChecking',
   savings: 'finance.accountSavings',
   cash: 'finance.accountCash',
-  investment: 'finance.accountInvestment',
-  consorcio: 'finance.accountConsorcio'
+  investment: 'finance.accountInvestment'
 }
 
 export function Accounts() {
   const t = useT()
   const lang = useLang()
-  const { accounts, transactions } = useFinanceStore()
+  const navigate = useNavigate()
+  const { accounts, transactions, creditCards, loans, consortiums } = useFinanceStore()
   const currency = useProfile((s) => s.currency)
   const money = (v: number): string => formatCurrency(v, currency, lang)
 
@@ -56,6 +57,18 @@ export function Accounts() {
     () => new Map(accounts.map((a) => [a.id, accountBalance(a, transactions)])),
     [accounts, transactions]
   )
+
+  /** How many cards / loans / consórcios hang off each account, for the row hint. */
+  const productCount = useMemo(() => {
+    const counts = new Map<string, number>()
+    const bump = (id?: string): void => {
+      if (id) counts.set(id, (counts.get(id) ?? 0) + 1)
+    }
+    creditCards.forEach((c) => bump(c.issuingAccountId))
+    loans.forEach((l) => bump(l.accountId))
+    consortiums.forEach((c) => bump(c.accountId))
+    return counts
+  }, [creditCards, loans, consortiums])
 
   const confirmDelete = async (account: Account): Promise<void> => {
     const result = await deleteAccount(account.id)
@@ -83,16 +96,34 @@ export function Accounts() {
             return (
               <ListRow key={account.id} className={cn(account.archived && 'opacity-55')}>
                 <ColorDot color={account.color} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="truncate text-sm font-medium">{account.name}</span>
-                    <Badge>{t(TYPE_KEYS[account.type])}</Badge>
-                    {account.archived && <Badge>{t('finance.archived')}</Badge>}
-                  </div>
-                  <div className={cn('tabular mt-0.5 text-sm font-semibold', balance < 0 && 'text-destructive')}>
-                    {money(balance)}
-                  </div>
-                </div>
+                {/* The row body opens the account's detail (cards / loans /
+                    consórcios); the action buttons beside it are siblings, so
+                    they never trigger this navigation. */}
+                <button
+                  type="button"
+                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/60"
+                  onClick={() => void navigate(`/finances/accounts/${account.id}`)}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="truncate text-sm font-medium">{account.name}</span>
+                      <Badge>{t(TYPE_KEYS[account.type])}</Badge>
+                      {account.archived && <Badge>{t('finance.archived')}</Badge>}
+                    </span>
+                    <span
+                      className={cn(
+                        'tabular mt-0.5 block text-sm font-semibold',
+                        balance < 0 && 'text-destructive'
+                      )}
+                    >
+                      {money(balance)}
+                    </span>
+                  </span>
+                  {(productCount.get(account.id) ?? 0) > 0 && (
+                    <Badge>{productCount.get(account.id)}</Badge>
+                  )}
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                </button>
                 <div className="flex shrink-0 items-center">
                   <Button
                     variant="ghost"

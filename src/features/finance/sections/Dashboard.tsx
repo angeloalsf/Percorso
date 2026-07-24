@@ -54,7 +54,7 @@ import { BillBadge, PayBillDialog } from './Bills'
 const BAND_COLOR: Record<HealthBand, string> = {
   healthy: 'var(--success)',
   good: 'var(--primary)',
-  attention: '#f59e0b',
+  attention: 'var(--warning)',
   critical: 'var(--destructive)'
 }
 const BAND_KEY = {
@@ -222,7 +222,7 @@ export function Dashboard() {
               <div key={bill.id} className="flex items-center gap-2.5">
                 <span
                   className="size-2 shrink-0 rounded-full"
-                  style={{ background: state === 'overdue' ? 'var(--destructive)' : '#f59e0b' }}
+                  style={{ background: state === 'overdue' ? 'var(--destructive)' : 'var(--warning)' }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -525,7 +525,7 @@ const INSIGHT_ICON: Record<Insight['kind'], LucideIcon> = {
 const INSIGHT_COLOR: Record<Insight['kind'], string> = {
   increase: 'var(--destructive)',
   decrease: 'var(--success)',
-  budgetNear: '#f59e0b'
+  budgetNear: 'var(--warning)'
 }
 const INSIGHT_TKEY = {
   increase: 'finance.insightIncrease',

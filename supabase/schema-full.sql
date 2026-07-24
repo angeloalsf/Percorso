@@ -12,7 +12,7 @@
 -- of the following, for EVERY user, with no confirmation and no undo:
 --
 --   profiles · accounts · categories · credit_cards
---   transactions · budgets · goals · bills
+--   transactions · budgets · goals · bills · loans · consortiums
 --
 -- That means every user's finance history, budgets, savings goals and bills —
 -- gone. NEVER run this against production, or against any database holding
@@ -52,6 +52,8 @@
 --   20260723130000_bills.sql              bills
 --   20260723140000_credit_cards.sql       credit_cards, accounts type change,
 --                                         transactions.card_id, bills.card_id
+--   20260724120000_loans_consortiums.sql  loans, consortiums, 'consorcio'
+--                                         dropped from the accounts type check
 --
 -- Design notes (unchanged from the migrations):
 --   • Every domain table carries user_id → auth.users with RLS, so each user
@@ -98,6 +100,8 @@ drop trigger if exists on_auth_user_updated on auth.users;
 -- Tables, child-before-parent. `cascade` also removes each table's policies,
 -- triggers, indexes and any foreign keys pointing at it, so the order below is
 -- belt-and-braces rather than strictly required.
+drop table if exists public.consortiums  cascade;
+drop table if exists public.loans        cascade;
 drop table if exists public.bills        cascade;
 drop table if exists public.goals        cascade;
 drop table if exists public.budgets      cascade;
@@ -243,9 +247,11 @@ create table public.accounts (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now(),
   unique (id, user_id),
-  -- 'card' was removed when credit_cards became a first-class entity.
+  -- 'card' was removed when credit_cards became a first-class entity;
+  -- 'consorcio' when consortiums became one. Both are products tied to an
+  -- account, not accounts themselves.
   constraint accounts_type_check
-    check (type in ('checking', 'savings', 'cash', 'investment', 'consorcio'))
+    check (type in ('checking', 'savings', 'cash', 'investment'))
 );
 
 -- ---------------------------------------------------------------------------
@@ -398,6 +404,56 @@ create table public.bills (
 );
 
 -- ---------------------------------------------------------------------------
+-- loans and consortiums — products tied to a bank account
+-- ---------------------------------------------------------------------------
+--
+-- INTENTIONALLY MINIMAL v1. List/CRUD only: unlike credit_cards there is NO
+-- lazy bill generation into public.bills and NO payment linking. account_id is
+-- display/grouping only and does not dictate which account installments are
+-- paid from. Progress is the (installments_paid, paid_as_of) pair —
+-- installments_paid was true ON paid_as_of, and the app rolls it forward one
+-- per due_day elapsed since (store.installmentsPaidNow). Replace that
+-- derivation first if real payment tracking is ever added.
+
+create table public.loans (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  account_id         uuid,
+  name               text not null check (char_length(name) between 1 and 120),
+  total_amount       numeric(14, 2) not null check (total_amount > 0),
+  installment_amount numeric(14, 2) not null check (installment_amount > 0),
+  installments_total integer not null check (installments_total between 1 and 600),
+  installments_paid  integer not null default 0 check (installments_paid >= 0),
+  paid_as_of         date not null default current_date,
+  due_day            smallint not null check (due_day between 1 and 31),
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now(),
+  foreign key (account_id, user_id) references public.accounts (id, user_id) on delete restrict,
+  unique (id, user_id),
+  constraint loans_paid_within_total check (installments_paid <= installments_total)
+);
+
+create table public.consortiums (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  account_id         uuid,
+  name               text not null check (char_length(name) between 1 and 120),
+  total_amount       numeric(14, 2) not null check (total_amount > 0),
+  installment_amount numeric(14, 2) not null check (installment_amount > 0),
+  installments_total integer not null check (installments_total between 1 and 600),
+  installments_paid  integer not null default 0 check (installments_paid >= 0),
+  paid_as_of         date not null default current_date,
+  -- "Contemplado": the quota has been drawn/awarded and the asset released.
+  contemplated       boolean not null default false,
+  due_day            smallint not null check (due_day between 1 and 31),
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now(),
+  foreign key (account_id, user_id) references public.accounts (id, user_id) on delete restrict,
+  unique (id, user_id),
+  constraint consortiums_paid_within_total check (installments_paid <= installments_total)
+);
+
+-- ---------------------------------------------------------------------------
 -- RLS: each user sees only their own rows; admins may READ everyone's.
 -- Writes (insert/update/delete) always stay scoped to the owner.
 -- ---------------------------------------------------------------------------
@@ -409,13 +465,16 @@ alter table public.transactions enable row level security;
 alter table public.budgets      enable row level security;
 alter table public.goals        enable row level security;
 alter table public.bills        enable row level security;
+alter table public.loans        enable row level security;
+alter table public.consortiums  enable row level security;
 
 do $$
 declare
   tbl text;
 begin
   foreach tbl in array array[
-    'accounts', 'categories', 'credit_cards', 'transactions', 'budgets', 'goals', 'bills'
+    'accounts', 'categories', 'credit_cards', 'transactions', 'budgets', 'goals', 'bills',
+    'loans', 'consortiums'
   ]
   loop
     execute format(
@@ -458,5 +517,9 @@ create index budgets_user_idx         on public.budgets (user_id);
 create index goals_user_idx           on public.goals (user_id);
 create index bills_user_due_idx       on public.bills (user_id, due_date);
 create index bills_card_idx           on public.bills (card_id);
+create index loans_user_idx           on public.loans (user_id);
+create index loans_account_idx        on public.loans (account_id);
+create index consortiums_user_idx     on public.consortiums (user_id);
+create index consortiums_account_idx  on public.consortiums (account_id);
 
 commit;
