@@ -1,5 +1,5 @@
 -- ============================================================================
--- Percorso — DEMO DATA for an EXISTING user (Angelo)  ·  v3 (credit cards)
+-- Percorso — DEMO DATA for an EXISTING user  ·  v3 (credit cards)
 -- ============================================================================
 -- Unlike supabase/seed/test-data.sql, this script does NOT create an
 -- auth.users / auth.identities row. It assumes the account already exists
@@ -11,8 +11,8 @@
 -- consortiums, transactions (bank + card purchases, incl. is_recurring flags),
 -- budgets, goals, and bills.
 --
--- Target user: Angelo
--- user_id:     45143c60-1ea8-4168-9dc6-0105c1f8cadf
+-- Before running: edit the `uid` constant below to the target account's id
+-- (Dashboard → Authentication → Users).
 --
 -- Dates are generated relative to CURRENT_DATE so the dashboard's current
 -- month, trends, projections, card cycles and due-date alerts are always
@@ -47,7 +47,8 @@ end $$;
 
 do $$
 declare
-  uid constant uuid := '0d9b6f1b-ee9c-4616-a0b7-93fd55269656';
+  -- Get this from Dashboard → Authentication → Users.
+  uid constant uuid := '<PASTE-TARGET-USER-ID>';
 
   -- fixed ids so transactions/budgets/goals can reference accounts + categories
   acc_checking constant uuid := 'b0000000-0000-4000-8000-000000000001';
