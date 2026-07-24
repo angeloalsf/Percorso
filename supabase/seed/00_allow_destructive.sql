@@ -1,0 +1,20 @@
+-- ============================================================================
+-- Percorso — LOCAL DEV BOOTSTRAP  ·  runs first, before admin.sql/test-data.sql
+-- ============================================================================
+-- Pre-authorizes the destructive-script opt-in guard (see the `do $$ ...`
+-- block at the top of schema-full.sql, seed/admin.sql, seed/test-data.sql and
+-- seed/demo-data.sql) for THIS local database only, so `supabase db reset`
+-- keeps working with zero manual steps.
+--
+-- This file is listed in config.toml's db.seed.sql_paths — LOCAL ONLY, never
+-- part of a migration, so it is never applied by `supabase db push` and never
+-- reaches a hosted project. A hosted database (or anyone pasting admin.sql /
+-- test-data.sql directly into a Dashboard SQL Editor) never gets this
+-- pre-authorization and must set the flag explicitly, which is the point.
+--
+-- Session-scoped only: `alter database ... set` would persist it across
+-- connections too, but that requires actual Postgres superuser, which even
+-- the local `postgres` role isn't in this stack (only `supabase_admin` is) —
+-- confirmed empirically. Session-scoped works because `supabase db reset`
+-- runs every seed file over the same connection.
+select set_config('percorso.allow_destructive', 'yes', false);

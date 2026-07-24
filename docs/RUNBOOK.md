@@ -165,14 +165,17 @@ hot-reloading dev server. Expected output:
 
 Open **<http://localhost:5173>**. What "working" looks like:
 
-- If `.env` is **configured** (Section 3 or 5), you land on the **login page**.
-- If `.env` is **missing/blank**, you see a **"Supabase is not configured"**
-  notice instead of a crash — that's intentional (`src/lib/supabase.ts` builds a
-  placeholder client so the UI can render the setup notice). Fix `.env`, then
+- You land on the **login page** — `.env.development` is committed with local
+  Docker values already filled in, so this works out of the box as long as
+  `supabase start` is running (Section 3).
+- If instead you see a **"Supabase is not configured"** notice, an env file is
+  missing or blank — see Section 5 for the full env-file convention
+  (`src/lib/supabase.ts` builds a placeholder client so the UI can render the
+  setup notice instead of crashing). Fix the relevant `.env*` file, then
   restart the dev server.
 
-> **Vite reads `.env` only at startup.** Any time you change `.env`, stop the dev
-> server (`Ctrl+C`) and run `npm run dev` again.
+> **Vite reads env files only at startup.** Any time you change one, stop the
+> dev server (`Ctrl+C`) and run `npm run dev` again.
 
 ### Testing from your phone on the same Wi-Fi (`--host`)
 
@@ -224,8 +227,9 @@ npx supabase start
 ```
 
 The first run downloads several Docker images (a few minutes). When ready, it
-prints your local credentials — **keep this output**, you'll paste values into
-`.env`:
+prints your local credentials. `.env.development` (committed) already has
+these values filled in, so there's nothing to paste anywhere — this output is
+just useful for cross-checking or for Supabase Studio:
 
 ```
          API URL: http://127.0.0.1:54321
@@ -280,6 +284,11 @@ of truth and the only thing the CLI applies.
 > every user. Local dev and throwaway databases only; reseed afterwards with
 > `supabase/seed/*.sql`. To change a schema whose data you want to keep, write a
 > migration.
+>
+> It also **refuses to run** unless you uncomment the `set
+> percorso.allow_destructive = 'yes';` line near the top of the file first —
+> a guard against pasting it into the wrong project's SQL editor. See
+> "Destructive-script guard" below.
 
 The simplest, most reliable way to (re)build the local DB to a known state:
 
@@ -293,11 +302,14 @@ seed files.** Because `config.toml` has:
 ```toml
 [db.seed]
 enabled = true
-sql_paths = ["./seed/admin.sql", "./seed/test-data.sql"]
+sql_paths = ["./seed/00_allow_destructive.sql", "./seed/admin.sql", "./seed/test-data.sql"]
 ```
 
-…those two seeds run automatically at the end of every reset. You'll see
-`NOTICE:  Seeded admin user …` and `NOTICE:  Seeded test user …` in the output.
+…those seeds run automatically at the end of every reset. `00_allow_destructive.sql`
+runs first and pre-authorizes the destructive-script guard (see below) for this
+local database only, so `admin.sql`/`test-data.sql` need no manual step here.
+You'll see `NOTICE:  Seeded admin user …` and `NOTICE:  Seeded test user …` in
+the output.
 
 > If you ever want migrations **without** wiping data or running seeds, use
 > `npx supabase migration up`. For everyday local dev, `db reset` is what you
@@ -346,12 +358,45 @@ project via the Dashboard SQL Editor. It is deliberately absent from
 ### Running a seed by hand (optional)
 
 `db reset` already runs both seeds. If you want to run one manually against the
-local DB (or a throwaway project), use `psql` with the local DB URL from
-`supabase start`:
+local DB (or a throwaway project), first open `supabase/seed/test-data.sql` and
+uncomment the `-- set percorso.allow_destructive = 'yes';` line near the top —
+see "Destructive-script guard" below — then run it with `psql` and the local DB
+URL from `supabase start`:
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seed/test-data.sql
 ```
+
+Without uncommenting that line, the script refuses to run (prints "Refusing to
+run: this script is destructive…" and does nothing else — it's wrapped in a
+transaction specifically so a partial run can't slip through).
+
+### Destructive-script guard
+
+Four scripts can delete or recreate real data — `supabase/schema-full.sql`,
+`supabase/seed/admin.sql`, `supabase/seed/test-data.sql`, and
+`supabase/seed/demo-data.sql` — so each refuses to run unless the Postgres
+setting `percorso.allow_destructive` is `'yes'` in the same session:
+
+```sql
+set percorso.allow_destructive = 'yes';
+```
+
+Each file has this as a commented-out line right below its header; uncomment it
+(or paste the `set` line immediately above the script in the same SQL editor
+session) to proceed. This is the last line of defense against pasting one of
+these into the wrong project's Dashboard SQL Editor. Each script is wrapped in
+an explicit `begin; … commit;` block, because `psql -f` (and some SQL editors)
+keep executing statements after an error by default — without the transaction
+wrapper, the guard's error would print but the destructive statements after it
+would still run. With it, one failed statement poisons the whole transaction,
+so nothing partially applies either way.
+
+Local `supabase db reset` is the one exception: `seed/00_allow_destructive.sql`
+(first in `config.toml`'s `sql_paths`) sets the flag for that session
+automatically, so `admin.sql`/`test-data.sql` need no manual step during a
+normal local reset. That bootstrap file is local-only tooling — it's never
+part of a migration, so `supabase db push` never sends it to a hosted project.
 
 ### Open Supabase Studio (inspect data visually)
 
@@ -388,26 +433,24 @@ npx supabase stop --no-backup
 
 ### Point the frontend at local Supabase
 
-After `supabase start`, put the **local** values into `.env` (create it from the
-template if needed with `cp .env.example .env`):
+Nothing to do here — `.env.development` is committed with the local Docker
+values already filled in (Vite loads it automatically in dev mode; see Section
+5 for the full env-file convention), so `npm run dev` after `supabase start`
+just works.
 
-```
-VITE_SUPABASE_URL=http://localhost:54321
-VITE_SUPABASE_ANON_KEY=<the "anon key" printed by supabase start>
-```
-
-You can reprint those values anytime with `npx supabase status` (Section 7).
-Then restart the dev server (`Ctrl+C`, `npm run dev`) so Vite picks up the new
-`.env`.
+The values in that file are the Supabase CLI's well-known local-dev defaults
+(same for every project with the default `config.toml` jwt_secret) — never
+valid against a real hosted project. You can confirm them anytime with
+`npx supabase status` (Section 7) if you want to double-check they still
+match.
 
 ---
 
 ## 4. Logging in with the seeded test user
 
 **Prerequisites:** local Supabase is running (`npx supabase start` +
-`npx supabase db reset`), `.env` points at `http://localhost:54321` with the
-local anon key (end of Section 3), and the dev server was **restarted** after
-editing `.env`.
+`npx supabase db reset`) and the dev server is running (`npm run dev` reads
+`.env.development` automatically — nothing to configure, see Section 3).
 
 ### Credentials (from `test-data.sql`)
 
@@ -462,49 +505,60 @@ The Supabase client (`src/lib/supabase.ts`) is created with
 
 ### What controls which backend the app uses
 
-**Only two env variables**, read by `src/lib/supabase.ts`:
+**Three env variables**, read by `src/lib/supabase.ts` (the first two) and
+`src/app/EnvBanner.tsx` (the third):
 
 | Variable | Local Docker | Real hosted project |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | `http://localhost:54321` | `https://<your-project-ref>.supabase.co` |
+| `VITE_SUPABASE_URL` | `http://127.0.0.1:54321` | `https://<your-project-ref>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | anon key from `supabase start` | anon / publishable key from the dashboard |
+| `VITE_ENV_LABEL` | `local` | `staging` or `production` |
 
-They live in **`.env`** at the project root. There is no other switch — swapping
-these two values (and restarting the dev server) is the whole change.
+Vite loads env files **by mode**, not from a single `.env`
+(see [Vite: Env Variables and Modes](https://vite.dev/guide/env-and-mode.html)):
 
-### ⚠️ Fix the current `.env` first
+- **`.env.development`** is committed and already has the local Docker values
+  above. `npm run dev` uses **development** mode by default, so it reads this
+  file automatically — a fresh clone needs zero manual env editing to run
+  against local Supabase.
+- **`.env.production`** (or `.env.production.local`) holds the real project's
+  values. Both are gitignored — never commit real credentials. `npm run build`
+  / `npm run preview` use **production** mode by default, so they read
+  whichever of these exists.
+- To point the **dev server** (`npm run dev`, hot reload) at the **real**
+  project instead of local Docker — e.g. no Docker available, or debugging
+  against real data — create `.env.development.local` (gitignored) with the
+  hosted values. It overrides `.env.development` in development mode without
+  touching the committed file.
 
-Your current `.env` is **misconfigured** and must be corrected before this
-section works:
+`VITE_ENV_LABEL` drives the ribbon at the top of the screen in anything that
+isn't `production` — a reminder of which backend you're pointed at, and its
+host, so it's obvious at a glance when you're not looking at local data.
 
-- `VITE_SUPABASE_URL` is **not a valid Supabase URL**. A real one is
-  `https://<project-ref>.supabase.co`, where `<project-ref>` is your project's
-  short ref (Dashboard → Project Settings → General / API).
-- The value embeds a string prefixed **`sb_secret_`** — that is the format of a
-  Supabase **secret** key. **A secret key must never live in this repo's `.env`**
-  (everything under `VITE_` is bundled into the browser; RLS is your only access
-  control). Treat that key as **compromised** and rotate it in the dashboard
-  (Project Settings → API → rotate), then remove it from `.env`.
+### Steps to point the dev server at the hosted project
 
-### Steps to point at the hosted project
-
-1. Open your `.env` and set the two values (get them from **Supabase Dashboard →
-   Project Settings → API**):
+1. Create `.env.development.local` at the project root with the values from
+   **Supabase Dashboard → Project Settings → API**:
 
    ```
    VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
    VITE_SUPABASE_ANON_KEY=<anon / publishable key>
+   VITE_ENV_LABEL=staging
    ```
 
    Use **only** the `anon` / publishable key — never the `service_role` / secret
-   key.
+   key: everything under `VITE_` is bundled into the browser, so a secret key
+   here is a leaked secret key.
 
-2. Restart the dev server so Vite reloads `.env`:
+2. Restart the dev server so Vite reloads the env files:
 
    ```bash
    # Ctrl+C to stop, then:
    npm run dev
    ```
+
+   The banner should now read `STAGING · <your-project-ref>.supabase.co` (or
+   whatever label you chose) instead of `LOCAL`.
 
 3. In the **Supabase dashboard → Authentication → URL Configuration**, set
    **Site URL** to where the app runs (`http://localhost:5173` in dev, your real
@@ -580,7 +634,8 @@ needed).
 - Quick tunnels are for **testing/demo only** — never route production traffic
   through one.
 - It fronts your **local dev server**, so your local Supabase (or whichever
-  backend `.env` points at) must be up and reachable for the app to load data.
+  backend your active env file points at) must be up and reachable for the app
+  to load data.
 
 ---
 
@@ -625,8 +680,8 @@ the browser's DevTools console.
 
 | Symptom | Likely cause & fix |
 | --- | --- |
-| App shows **"Supabase is not configured"** | `.env` missing/blank. Set both `VITE_` vars, then **restart** `npm run dev`. |
-| Changed `.env` but app still uses old backend | Vite only reads `.env` at startup — stop and re-run `npm run dev`. |
+| App shows **"Supabase is not configured"** | An env file is missing/blank for the active mode — see Section 5. Set both `VITE_SUPABASE_*` vars, then **restart** `npm run dev`. |
+| Changed an env file but app still uses old backend | Vite only reads env files at startup — stop and re-run `npm run dev`. |
 | Login fails / redirect errors on LAN or tunnel URL | Add that exact origin to Supabase **Redirect URLs** (Sections 2, 5, 6). |
 | Test user logs in but screens are empty | Seed didn't run — `npx supabase db reset`. |
 | `supabase start` fails | Docker Desktop isn't running, or ports `54321–54327` are in use. Start Docker; free the ports or `npx supabase stop` a previous stack. |

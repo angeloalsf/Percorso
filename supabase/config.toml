@@ -71,7 +71,7 @@ enabled = true
 # LOCAL ONLY — these provision an admin user and a test-login + demo finance
 # data. `supabase db reset` runs them after migrations. Never point a
 # production database at these files.
-sql_paths = ["./seed/admin.sql", "./seed/test-data.sql"]
+sql_paths = ["./seed/00_allow_destructive.sql", "./seed/admin.sql", "./seed/test-data.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.

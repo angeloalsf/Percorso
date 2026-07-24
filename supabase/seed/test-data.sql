@@ -18,7 +18,27 @@
 --
 -- Dates are generated relative to CURRENT_DATE so the dashboard's current
 -- month, 6-month cash flow, and budget progress are always populated.
+--
+-- Opt-in guard: uncomment the `set` line below to let this script run — a
+-- last line of defense against pasting this into the wrong project (it
+-- creates a real login). `supabase db reset` sets this automatically via
+-- seed/00_allow_destructive.sql (config.toml db.seed.sql_paths), so local dev
+-- needs no extra step. Wrapped in an explicit transaction because psql (and
+-- some SQL editors) keep running statements after an error by default: once
+-- the guard raises, every later statement in the same transaction fails too,
+-- so nothing partially applies.
 -- ============================================================================
+
+begin;
+
+-- set percorso.allow_destructive = 'yes';
+
+do $$
+begin
+  if current_setting('percorso.allow_destructive', true) is distinct from 'yes' then
+    raise exception 'Refusing to run: this script is destructive. Uncomment the `set percorso.allow_destructive` line above to proceed.';
+  end if;
+end $$;
 
 create extension if not exists pgcrypto;
 
@@ -63,14 +83,19 @@ begin
   -- ---- auth user ----
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password,
-    email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data
+    email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
+    confirmation_token, recovery_token, email_change_token_new, email_change
   )
   values (
     '00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated',
     email, crypt(pass, gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}',
-    jsonb_build_object('full_name', 'Test User')
+    jsonb_build_object('full_name', 'Test User'),
+    -- GoTrue's Go client can't scan NULL into these string columns; the table
+    -- default is NULL (not ''), so a direct SQL insert must set them explicitly
+    -- or every login for this user 500s with "converting NULL to string".
+    '', '', '', ''
   );
 
   insert into auth.identities (
@@ -195,3 +220,5 @@ begin
   raise notice 'Seeded test user % with demo finance data', email;
 end;
 $$;
+
+commit;

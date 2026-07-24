@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, NavLink, Outlet } from 'react-router-dom'
 import { CircleAlert, Settings, Wallet } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
+import { EnvBanner } from '@/app/EnvBanner'
 import { Button } from '@/components/ui/button'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Splash } from '@/components/ui/splash'
@@ -53,6 +54,7 @@ function Shell({ userId }: { userId: string }) {
 
   return (
     <div className="min-h-dvh">
+      <EnvBanner />
       <main className="min-w-0">
         <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8">
           <header className="mb-5 flex items-center justify-between gap-3 md:mb-6">

@@ -27,6 +27,24 @@
 -- changes".
 -- ============================================================================
 
+-- Opt-in guard: uncomment the `set` line below to let this script run — a
+-- last line of defense against running it for the wrong user_id / wrong
+-- project. Wrapped in an explicit transaction because psql (and some SQL
+-- editors) keep running statements after an error by default: once the guard
+-- raises, every later statement in the same transaction fails too, so
+-- nothing partially applies.
+
+begin;
+
+-- set percorso.allow_destructive = 'yes';
+
+do $$
+begin
+  if current_setting('percorso.allow_destructive', true) is distinct from 'yes' then
+    raise exception 'Refusing to run: this script is destructive. Uncomment the `set percorso.allow_destructive` line above to proceed.';
+  end if;
+end $$;
+
 do $$
 declare
   uid constant uuid := '0d9b6f1b-ee9c-4616-a0b7-93fd55269656';
@@ -178,3 +196,5 @@ begin
   raise notice 'Seeded full demo dataset (finance + cards + goals + bills) for existing user %', uid;
 end;
 $$;
+
+commit;

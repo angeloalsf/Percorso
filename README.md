@@ -166,7 +166,7 @@ src/
 ├── main.tsx           # boot: theme init → render <App>
 ├── App.tsx            # router: /login /signup | /finances /settings
 ├── auth/              # AuthProvider (session), AuthGate, Login/Signup, error mapping
-├── app/               # AppLayout (bottom nav ↔ sidebar, data gate), SettingsPage
+├── app/               # AppLayout (bottom nav at all breakpoints, data gate), SettingsPage
 ├── features/finance/  # store (Supabase-backed) + dashboard/transactions/accounts/budgets/categories
 ├── components/ui/     # shadcn-style primitives (button, dialog, tabs, select…)
 ├── components/charts/ # dependency-free SVG donut + line charts

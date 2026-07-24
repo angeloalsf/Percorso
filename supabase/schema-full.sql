@@ -65,6 +65,25 @@
 --     purpose — see README "Security decisions".
 -- ============================================================================
 
+-- Opt-in guard: uncomment the `set` line below to let this script run — the
+-- last line of defense against pasting this DESTRUCTIVE script into the
+-- wrong project's SQL editor. Wrapped in an explicit transaction because
+-- psql (and some SQL editors) keep running statements after an error by
+-- default: once the guard raises, every later statement in the same
+-- transaction fails too, so nothing partially applies (no half-dropped
+-- schema).
+
+begin;
+
+-- set percorso.allow_destructive = 'yes';
+
+do $$
+begin
+  if current_setting('percorso.allow_destructive', true) is distinct from 'yes' then
+    raise exception 'Refusing to run: this script is destructive. Uncomment the `set percorso.allow_destructive` line above to proceed.';
+  end if;
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- teardown — see the DESTRUCTIVE warning above
 -- ---------------------------------------------------------------------------
@@ -439,3 +458,5 @@ create index budgets_user_idx         on public.budgets (user_id);
 create index goals_user_idx           on public.goals (user_id);
 create index bills_user_due_idx       on public.bills (user_id, due_date);
 create index bills_card_idx           on public.bills (card_id);
+
+commit;

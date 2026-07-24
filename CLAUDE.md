@@ -24,7 +24,7 @@ src/
 ├── App.tsx              # AuthProvider + router: AuthGate(/login /signup) · AppLayout(/finances /settings)
 ├── auth/                # AuthProvider (session context), AuthGate, LoginPage, SignupPage,
 │                        #   AuthShell (shared layout + "not configured" notice), errors.ts (AuthError → TKey)
-├── app/                 # AppLayout: session gate → data gate → shell (bottom tab bar <md:, sidebar md:+)
+├── app/                 # AppLayout: session gate → data gate → shell (bottom nav at all breakpoints)
 │                        # SettingsPage: profile name, language, theme, sign-out
 ├── features/finance/    # store.ts (Supabase-backed Zustand) + FinancePage + sections/ (5 tabs)
 ├── components/ui/       # shadcn-style primitives; components/charts/ = dependency-free SVG
@@ -79,7 +79,7 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 ### CSS / UI conventions
 
 - Tailwind v4 (`@tailwindcss/vite`), tokens as CSS variables in `src/index.css` (`--background`, `--primary`, …, mapped via `@theme inline`), class-based dark mode (`.dark` on `<html>`, `@custom-variant dark`).
-- **Mobile-first**: base styles target ~375 px; scale up with `sm:`/`md:`/`lg:`. Bottom tab bar below `md:`, sidebar at `md:+`. Forms are single-column on phones (`FormGrid`), dialogs are bottom sheets on phones and centered modals from `sm:` (`components/ui/dialog.tsx`). Native `<select>` on purpose — best mobile UX.
+- **Mobile-first**: base styles target ~375 px; scale up with `sm:`/`md:`/`lg:`. Bottom nav at all breakpoints (no sidebar yet — deferred, see `STD-5`). Forms are single-column on phones (`FormGrid`), dialogs are bottom sheets on phones and centered modals from `sm:` (`components/ui/dialog.tsx`). Native `<select>` on purpose — best mobile UX.
 - Feedback rules (kept from v1): every mutation toasts, every delete goes through `<ConfirmDialog>`, every list has an `<EmptyState>`.
 - Dates are local `YYYY-MM-DD` strings via `lib/dates.ts` — never `new Date(isoString)` on a date-only string. Postgres `date` columns round-trip as those strings.
 

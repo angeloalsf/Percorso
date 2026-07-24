@@ -1,4 +1,5 @@
 import { Waypoints } from 'lucide-react'
+import { EnvBanner } from '@/app/EnvBanner'
 import { supabaseConfigured } from '@/lib/supabase'
 
 interface AuthShellProps {
@@ -10,24 +11,27 @@ interface AuthShellProps {
 /** Shared centered layout for the public auth screens. */
 export function AuthShell({ title, subtitle, children }: AuthShellProps) {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <span className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary/12 text-primary">
-            <Waypoints className="size-5" />
-          </span>
-          <h1 className="text-xl font-semibold">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+    <>
+      <EnvBanner />
+      <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 flex flex-col items-center text-center">
+            <span className="mb-3 flex size-11 items-center justify-center rounded-xl bg-primary/12 text-primary">
+              <Waypoints className="size-5" />
+            </span>
+            <h1 className="text-xl font-semibold">{title}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          </div>
+          {!supabaseConfigured && (
+            <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+              Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code>, fill in
+              VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.
+            </p>
+          )}
+          {children}
         </div>
-        {!supabaseConfigured && (
-          <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
-            Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code>, fill in
-            VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.
-          </p>
-        )}
-        {children}
-      </div>
-    </main>
+      </main>
+    </>
   )
 }
 
