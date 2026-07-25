@@ -12,3 +12,15 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  rls-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      # Only the db container is needed: pgTAP exercises RLS directly at the
+      # SQL level (set local role authenticated + request.jwt.claims), no
+      # PostgREST/GoTrue/Studio/etc. required. See supabase/tests/*.sql.
+      - run: supabase start -x edge-runtime,gotrue,imgproxy,kong,logflare,mailpit,postgres-meta,postgrest,realtime,storage-api,studio,supavisor,vector
+      - run: supabase test db --local

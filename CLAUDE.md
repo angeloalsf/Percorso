@@ -7,8 +7,12 @@ Percorso is a **mobile-first web app** (React SPA) with a single module — **Fi
 - `npm run dev` — Vite dev server (http://localhost:5173)
 - `npm run dev:host` — same, bound to `0.0.0.0` so phones on the same Wi-Fi can reach it at `http://<lan-ip>:5173`
 - `npm run typecheck` — strict `tsc --noEmit` over app + vite config. **Run after every change**; it is also the i18n test suite (see below).
+- `npm run lint` / `npm run format` — ESLint / Prettier; both run in the pre-commit hook (Husky + lint-staged)
+- `npm test` / `npm run test:watch` — Vitest unit tests for the store's derived-value functions and `lib/dates.ts`
+- `npm run knip` / `npm run deadcode` — unused-export/dead-code sweep (knip, ts-prune); run occasionally, not part of CI
 - `npm run build` — typecheck + production bundle into `dist/`
 - `npm run preview` — serve the production build
+- `supabase test db` — pgTAP RLS isolation tests (`supabase/tests/`) against a running local Supabase; needs only the `db` container (see the test file's header for the minimal `supabase start -x ...`)
 
 Environment: copy `.env.example` → `.env` with `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. Never introduce the `service_role` key anywhere in this repo — all `VITE_` vars ship to the browser; RLS is the access control.
 
@@ -18,7 +22,8 @@ Environment: copy `.env.example` → `.env` with `VITE_SUPABASE_URL` + `VITE_SUP
 supabase/
 ├── migrations/          # schema + RLS; apply via dashboard SQL editor or `supabase db push`
 ├── schema-full.sql      # consolidated snapshot of the CURRENT schema (never applied; see below)
-└── seed/                # admin user, test-login + demo finance data, production-safe demo data
+├── seed/                # admin user, test-login + demo finance data, production-safe demo data
+└── tests/               # pgTAP RLS isolation tests, run via `supabase test db`
 src/
 ├── main.tsx             # initTheme() → render <App> (StrictMode)
 ├── App.tsx              # AuthProvider + router: AuthGate(/login /signup) · AppLayout(/finances

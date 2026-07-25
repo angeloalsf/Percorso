@@ -522,4 +522,26 @@ create index loans_account_idx        on public.loans (account_id);
 create index consortiums_user_idx     on public.consortiums (user_id);
 create index consortiums_account_idx  on public.consortiums (account_id);
 
+-- ---------------------------------------------------------------------------
+-- explicit base-privilege grants for the `authenticated` role
+-- ---------------------------------------------------------------------------
+-- RLS policies only filter rows an operation is already privileged to
+-- attempt; see 20260725120000_authenticated_grants.sql for why this is
+-- explicit rather than assumed from Supabase's (retiring) auto-expose
+-- default. `anon` intentionally gets nothing.
+
+grant select, insert, update, delete on
+  public.accounts,
+  public.categories,
+  public.transactions,
+  public.budgets,
+  public.goals,
+  public.bills,
+  public.credit_cards,
+  public.loans,
+  public.consortiums
+to authenticated;
+
+grant select, insert on public.profiles to authenticated;
+
 commit;
