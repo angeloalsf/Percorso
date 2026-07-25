@@ -11,7 +11,7 @@ import { ptBR } from './locales/pt-br'
  * compile errors) and `t()` only accepts key paths that exist in it.
  * `npm run typecheck` is the i18n test suite.
  */
-export type Dict = typeof en
+type Dict = typeof en
 
 type Paths<T> = {
   [K in keyof T & string]: T[K] extends string ? K : `${K}.${Paths<T[K]>}`

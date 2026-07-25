@@ -9,8 +9,6 @@ import { cn } from '@/lib/utils'
  */
 
 const Dialog = DialogPrimitive.Root
-const DialogTrigger = DialogPrimitive.Trigger
-const DialogClose = DialogPrimitive.Close
 
 function DialogContent({
   className,
@@ -57,4 +55,4 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return <div className={cn('flex justify-end gap-2 border-t px-4 py-3', className)} {...props} />
 }
 
-export { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter }
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter }

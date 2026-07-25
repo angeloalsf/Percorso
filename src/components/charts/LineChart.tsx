@@ -1,6 +1,6 @@
 import { useMeasure } from '@/lib/useMeasure'
 
-export interface LineSeries {
+interface LineSeries {
   name: string
   color: string
   /** One value per label; `null` renders a gap. */

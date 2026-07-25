@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export interface LegendItem {
+interface LegendItem {
   label: string
   color: string
   value?: string

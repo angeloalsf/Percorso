@@ -1,6 +1,6 @@
 import { ChartLegend } from './ChartLegend'
 
-export interface DonutSegment {
+interface DonutSegment {
   label: string
   value: number
   color: string

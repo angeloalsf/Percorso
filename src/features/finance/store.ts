@@ -122,7 +122,7 @@ export interface Bill {
   cardId?: string
 }
 
-export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 export type SaveResult = 'ok' | 'error'
 export type DeleteResult = 'ok' | 'in-use' | 'error'
 
@@ -253,7 +253,7 @@ async function fetchAllTransactions(): Promise<{ data: any[]; error: null } | { 
 }
 
 /** A drill-down request handed from the dashboard to the Transactions tab. */
-export interface PendingTxFilter {
+interface PendingTxFilter {
   categoryId: string
   month: string
 }
@@ -653,7 +653,7 @@ export async function markBillPaid(id: string): Promise<SaveResult> {
   return 'ok'
 }
 
-export type BillAlertState = 'overdue' | 'dueSoon'
+type BillAlertState = 'overdue' | 'dueSoon'
 
 export interface BillAlert {
   bill: Bill
@@ -1012,7 +1012,7 @@ export function pctChange(current: number, previous: number): number | null {
   return ((current - previous) / Math.abs(previous)) * 100
 }
 
-export type InsightKind = 'increase' | 'decrease' | 'budgetNear'
+type InsightKind = 'increase' | 'decrease' | 'budgetNear'
 
 export interface Insight {
   kind: InsightKind
