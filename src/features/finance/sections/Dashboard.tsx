@@ -48,7 +48,7 @@ import {
   type HealthBand,
   type Insight
 } from '../store'
-import { BillBadge, PayBillDialog } from './Bills'
+import { BillBadge, PayBillDialog } from '../bills/BillUI'
 
 /** Band → CSS color. Amber has no token, so it is inlined. */
 const BAND_COLOR: Record<HealthBand, string> = {
