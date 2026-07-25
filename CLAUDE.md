@@ -9,6 +9,7 @@ Percorso is a **mobile-first web app** (React SPA) with a single module — **Fi
 - `npm run typecheck` — strict `tsc --noEmit` over app + vite config. **Run after every change**; it is also the i18n test suite (see below).
 - `npm run lint` / `npm run format` — ESLint / Prettier; both run in the pre-commit hook (Husky + lint-staged)
 - `npm test` / `npm run test:watch` — Vitest unit tests for the store's derived-value functions and `lib/dates.ts`
+- `npm run e2e` — Playwright e2e (`e2e/`) for the money-critical flows (login, add-transaction, create-account, pay a card bill) against a running local Supabase, logged in as the seeded `test@percorso.local` (`supabase/seed/test-data.sql`); needs `supabase start` + `supabase db reset` first — `npm run dev`'s webServer is started automatically. Single worker on purpose (specs share and mutate one seeded user's data).
 - `npm run knip` / `npm run deadcode` — unused-export/dead-code sweep (knip, ts-prune); run occasionally, not part of CI
 - `npm run build` — typecheck + production bundle into `dist/`
 - `npm run preview` — serve the production build

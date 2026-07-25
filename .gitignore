@@ -5,6 +5,9 @@ dist/
 Thumbs.db
 .vite/
 .lighthouseci/
+test-results/
+playwright-report/
+blob-report/
 .idea/
 .vscode/
 *.tsbuildinfo
