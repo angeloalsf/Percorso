@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, useId } from 'react'
 import { cn } from '@/lib/utils'
 import { Label } from './label'
 
@@ -11,13 +12,25 @@ interface FieldProps {
 
 /** Label + control + inline error, matching the form grid in dialogs. */
 export function Field({ label, error, span2, children }: FieldProps) {
+  const errorId = useId()
+  const control =
+    error && isValidElement(children)
+      ? cloneElement(children as React.ReactElement<{ 'aria-describedby'?: string; 'aria-invalid'?: boolean }>, {
+          'aria-describedby': errorId,
+          'aria-invalid': true
+        })
+      : children
   return (
     <label className={cn('flex min-w-0 flex-col gap-1.5', span2 && 'sm:col-span-2')}>
       <Label asChild>
         <span>{label}</span>
       </Label>
-      {children}
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {control}
+      {error && (
+        <span id={errorId} className="text-xs text-destructive">
+          {error}
+        </span>
+      )}
     </label>
   )
 }

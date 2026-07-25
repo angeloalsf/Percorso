@@ -4,6 +4,7 @@ dist/
 .DS_Store
 Thumbs.db
 .vite/
+.lighthouseci/
 .idea/
 .vscode/
 *.tsbuildinfo

@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n'
+import { Sentry } from '@/lib/sentry'
 import { usePrefs } from '@/state/prefs'
 
 interface Props {
@@ -27,8 +28,9 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown) {
-    // TOOL-9 (not yet implemented): report `error` to Sentry (or similar) here.
     console.error(error)
+    // No-op when VITE_SENTRY_DSN is unset — Sentry.init() was never called.
+    Sentry.captureException(error)
   }
 
   render() {

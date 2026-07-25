@@ -24,3 +24,20 @@ jobs:
       # PostgREST/GoTrue/Studio/etc. required. See supabase/tests/*.sql.
       - run: supabase start -x edge-runtime,gotrue,imgproxy,kong,logflare,mailpit,postgres-meta,postgrest,realtime,storage-api,studio,supavisor,vector
       - run: supabase test db --local
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    # Non-blocking: perf scores are noisy on shared runners, and this checks
+    # the unauthenticated /login page only (Lighthouse can't drive Supabase
+    # auth) — a signal to watch, not a merge gate. See TOOL-5 in
+    # docs/AUDIT-TASKS.md.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Local Supabase env (committed, safe fake keys) so /login renders for
+      # real instead of the "not configured" notice.
+      - run: npx vite build --mode development
+      - run: npx lhci autorun
