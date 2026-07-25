@@ -11,7 +11,9 @@ Percorso is a **mobile-first web app** (React SPA) with a single module — **Fi
 - `npm test` / `npm run test:watch` — Vitest unit tests for the store's derived-value functions and `lib/dates.ts`
 - `npm run e2e` — Playwright e2e (`e2e/`) for the money-critical flows (login, add-transaction, create-account, pay a card bill) against a running local Supabase, logged in as the seeded `test@percorso.local` (`supabase/seed/test-data.sql`); needs `supabase start` + `supabase db reset` first — `npm run dev`'s webServer is started automatically. Single worker on purpose (specs share and mutate one seeded user's data).
 - `npm run knip` / `npm run deadcode` — unused-export/dead-code sweep (knip, ts-prune); run occasionally, not part of CI
+- `npm run madge` — circular-dependency check; a non-blocking CI job, since it always flags the one documented `store.ts`/`cards.ts` cycle described under "Data flow" below
 - `npm run build` — typecheck + production bundle into `dist/`
+- `npm run build:analyze` — same, plus opens an interactive bundle-composition treemap (`dist/stats.html`); run occasionally, not part of CI
 - `npm run preview` — serve the production build
 - `supabase test db` — pgTAP RLS isolation tests (`supabase/tests/`) against a running local Supabase; needs only the `db` container (see the test file's header for the minimal `supabase start -x ...`)
 

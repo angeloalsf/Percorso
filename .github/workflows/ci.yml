@@ -44,6 +44,23 @@ jobs:
       # the committed .env.development (local Supabase, safe fake keys).
       - run: npm run e2e
 
+  madge:
+    runs-on: ubuntu-latest
+    # Non-blocking: the store/ split has one documented, intentional cycle
+    # (store.ts <-> cards.ts, extending through bills.ts/transactions.ts —
+    # every entity module imports patch/state from store.ts, and store.ts
+    # imports syncCardBills from cards.ts for load()). The call happens
+    # inside a function body, never at module-evaluation time, so it's safe;
+    # see ARCH-4 in docs/AUDIT-TASKS.md. This job is a signal for *new*
+    # cycles, not a gate on the known one.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run madge
+
   lighthouse:
     runs-on: ubuntu-latest
     # Non-blocking: perf scores are noisy on shared runners, and this checks
