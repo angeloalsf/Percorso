@@ -101,14 +101,24 @@ psql "$DATABASE_URL" -f supabase/seed/test-data.sql   # local db URL, or a dispo
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run dev:host   # same, exposed on your LAN (see below)
-npm run typecheck  # strict TS over the app (also validates all translations)
-npm run build      # typecheck + production bundle in dist/
-npm run preview    # serve the production build locally
+npm run dev          # http://localhost:5173 — reads .env.development (local Supabase)
+npm run dev:host     # same, exposed on your LAN (see below)
+npm run dev:staging  # dev server against .env.staging, once that project exists (see RUNBOOK §5)
+npm run typecheck    # strict TS over the app (also validates all translations)
+npm run build        # typecheck + production bundle in dist/ — reads .env.production
+npm run preview      # serve the production build locally
 ```
 
-Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages…). Configure the SPA fallback (all routes → `index.html`) and add the production URL to Supabase's redirect URLs.
+**Deploy:** `npm run build` bundles `dist/` using `.env.production` (Vite's default mode is `production`; see [Environment variables](#2-environment-variables) and [RUNBOOK §5](docs/RUNBOOK.md) for how env files map to modes). Deploy `dist/` to any static host (Vercel, Netlify, Cloudflare Pages…) — this repo doesn't commit to one yet. Whichever you pick needs:
+
+- **SPA fallback**: all routes (`/finances/accounts/:id`, etc.) must serve `index.html`, not 404 — this is a client-side router, there's no matching file on disk for those paths.
+- **A redirect URL added to the right Supabase project.** Local, staging and production are three *separate* Supabase projects (see [RUNBOOK §5](docs/RUNBOOK.md)), each with its own **Authentication → URL Configuration → Redirect URLs** allowlist in its own dashboard — there's no single shared list. Each project only needs the origin(s) that actually talk to it:
+
+  | Environment | Supabase project      | Origin to allow-list (in *that* project) |
+  | ----------- | ---------------------- | ----------------------------------------- |
+  | local       | local Docker           | `http://localhost:5173` (already set in `supabase/config.toml`) |
+  | staging     | `percorso-staging`     | your staging host's URL, once deployed    |
+  | production  | the real project       | your production domain                    |
 
 ## Testing on other devices
 

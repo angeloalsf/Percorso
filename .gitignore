@@ -12,6 +12,8 @@ Thumbs.db
 .env.local
 .env.production
 .env.production.local
+.env.staging
+.env.staging.local
 .env.development.local
 supabase/.temp/
 supabase/.branches/

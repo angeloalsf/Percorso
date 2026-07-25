@@ -528,6 +528,9 @@ Vite loads env files **by mode**, not from a single `.env`
   values. Both are gitignored — never commit real credentials. `npm run build`
   / `npm run preview` use **production** mode by default, so they read
   whichever of these exists.
+- **`.env.staging`** (or `.env.staging.local`) holds a second, disposable
+  hosted project's values, also gitignored. `npm run dev:staging` /
+  `vite build --mode staging` read it — see "Staging" below.
 - To point the **dev server** (`npm run dev`, hot reload) at the **real**
   project instead of local Docker — e.g. no Docker available, or debugging
   against real data — create `.env.development.local` (gitignored) with the
@@ -582,6 +585,40 @@ npx supabase db push                            # applies supabase/migrations/*.
 (seeds run on `db reset`, which you never run against a shared/remote DB).
 Alternatively you can paste the migration SQL into the dashboard's **SQL Editor**
 and run it.
+
+### Staging: rehearse against a second hosted project before production
+
+Today there are only two states: local Docker and production. **Staging** is a
+second, disposable Supabase project — free tier is enough — that lets you push
+a migration/seed change to real hosted infra and smoke-test it before it ever
+touches production. Set one up once (Dashboard → New project, e.g.
+`percorso-staging`), then:
+
+1. Copy `.env.example` → `.env.staging` (gitignored — never commit it) and
+   fill in that project's URL/anon key, with `VITE_ENV_LABEL=staging`.
+2. Point the CLI at staging and push migrations:
+
+   ```bash
+   npx supabase link --project-ref <staging-project-ref>
+   npx supabase db push
+   ```
+
+3. Smoke-test: `npm run dev:staging` runs the dev server against `.env.staging`
+   (banner reads `STAGING · <ref>.supabase.co`). Sign up, add a transaction,
+   click through the screens touched by your change.
+4. Only once staging looks right, re-link the CLI to **production** and push
+   the same migrations:
+
+   ```bash
+   npx supabase link --project-ref <production-project-ref>
+   npx supabase db push
+   ```
+
+`supabase link` just points the CLI's local state at one project ref at a
+time — relinking between staging and production is cheap and doesn't affect
+either project. The same "never run the seed scripts" rule below applies to
+staging too: it's disposable, but it's still a real hosted project with a
+real (if fake) login, not a scratch database you `db reset`.
 
 ### ⚠️ What NOT to do against the real database
 
