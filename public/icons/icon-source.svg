@@ -1,0 +1,9 @@
+<!-- Placeholder app icon (geometric "P" monogram) — swap for real branding.
+     Colors match src/index.css dark theme: --background #16181d, --primary #4cbd88.
+     Regenerate icon-192.png / icon-512.png / icon-maskable-512.png from this
+     (or a replacement) with any SVG-to-PNG tool. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#16181d"/>
+  <rect x="200.8" y="167.7" width="138" height="121.4" rx="60.7" ry="60.7" fill="none" stroke="#4cbd88" stroke-width="55.2"/>
+  <rect x="200.8" y="167.7" width="55.2" height="198.7" rx="27.6" fill="#4cbd88"/>
+</svg>

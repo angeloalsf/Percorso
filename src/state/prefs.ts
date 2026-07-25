@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { DEFAULT_LANGUAGE, isLangCode, type LangCode } from '@/i18n/config'
+import { DEFAULT_LANGUAGE, isLangCode, LOCALE_TAGS, type LangCode } from '@/i18n/config'
 
 /**
  * Device-local preferences (language + theme). These deliberately stay in
@@ -34,6 +34,11 @@ function applyTheme(theme: Theme): void {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme])
 }
 
+/** Keep <html lang> in sync so assistive tech and browser features (spellcheck, translate) use the right language. */
+function applyLang(language: LangCode): void {
+  document.documentElement.lang = LOCALE_TAGS[language]
+}
+
 interface PrefsState {
   language: LangCode
   theme: Theme
@@ -46,6 +51,7 @@ export const usePrefs = create<PrefsState>((set) => ({
   theme: initialTheme(),
   setLanguage: (language) => {
     localStorage.setItem(LANG_KEY, language)
+    applyLang(language)
     set({ language })
   },
   setTheme: (theme) => {
@@ -58,4 +64,9 @@ export const usePrefs = create<PrefsState>((set) => ({
 /** Called once from main.tsx before the first render. */
 export function initTheme(): void {
   applyTheme(usePrefs.getState().theme)
+}
+
+/** Called once from main.tsx before the first render — sets the initial <html lang>. */
+export function initLang(): void {
+  applyLang(usePrefs.getState().language)
 }
