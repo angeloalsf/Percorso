@@ -500,14 +500,14 @@ cleanup tasks so results are reproducible, and wire everything into CI (`TOOL-2`
   implement the `md:+` sidebar (better desktop UX; see `STD-5`) or change both docs to say
   "bottom nav at all breakpoints."
 
-### STD-5 — (Depends on STD-4 decision) Implement the documented `md:+` sidebar — **Low / M**
+### STD-5 — Decided against: keep bottom nav at all breakpoints — **Low / — (decided, no action)**
 
-- **Why:** Only if the team wants the desktop UX the docs already promise. On wide screens the
-  two-item bottom bar wastes the layout.
-- **Where:** `src/app/AppLayout.tsx` (nav markup), `src/index.css` (layout).
-- **What to do:** Render the nav as a fixed bottom bar below `md:` and a left sidebar from `md:`
-  up (hide/show with `md:` variants), keeping `NAV` as the single source. Skip if `STD-4` chooses
-  "document the bottom bar" instead.
+- **Why:** Revisited post-`STD-4`. The `md:+` sidebar was considered and explicitly declined —
+  bottom nav at every breakpoint stays the intended design, not a mobile-first default waiting to
+  be extended. `CLAUDE.md`'s CSS/UI conventions reflect this as a decision, not a gap.
+- **If revisited:** the sidebar sketch is still `src/app/AppLayout.tsx` (nav markup) + `src/index.css`
+  (layout) — render a fixed bottom bar below `md:` and a left sidebar from `md:` up, hide/show with
+  `md:` variants, keeping `NAV` as the single source.
 
 ### STD-6 — i18n is structurally in sync; add a translation-completeness check — **Low / S**
 
@@ -588,7 +588,7 @@ polish. Roughly sequential; items on the same line are independent.
 
 **Phase 3 — Product-ready polish** 14. `DP-4` / `DP-5` — staging project + deploy story. 15. `GAP-1` / `GAP-2` — PWA manifest + first-paint theme/lang fixes. 16. `GAP-3` / `STD-2` — finish + standardize form validation and error display. 17. `TOOL-9` / `TOOL-5` — Sentry + a11y checks (axe/Lighthouse). 18. `TOOL-7` — Playwright e2e for signup/login/add-transaction.
 
-**Phase 4 — Nice-to-have / opportunistic** 19. `MOD-1` / `MOD-2` / `ARCH-3` — modularize `store.ts`, extract shared list/bill UI. 20. `GAP-4` / `GAP-5` / `SEC-3` — index + password-policy + hosted session settings. 21. `TOOL-3` / `TOOL-4` / `TOOL-8` — madge, bundle visualizer, Dependabot. 22. `STD-3` / `STD-5` / `STD-6` — stale comments, optional sidebar, translation-completeness check.
+**Phase 4 — Nice-to-have / opportunistic** 19. `MOD-1` / `MOD-2` / `ARCH-3` — modularize `store.ts`, extract shared list/bill UI. 20. `GAP-4` / `GAP-5` / `SEC-3` — index + password-policy + hosted session settings. 21. `TOOL-3` / `TOOL-4` / `TOOL-8` — madge, bundle visualizer, Dependabot. 22. `STD-3` / `STD-5` / `STD-6` — stale comments, sidebar decision, translation-completeness check.
 
 ```
 
