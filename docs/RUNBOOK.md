@@ -641,6 +641,27 @@ the dashboard **SQL Editor**:
 update public.profiles set is_admin = true where id = '<the-user-uuid>';
 ```
 
+### Hosted project security settings (session, password, redirects)
+
+These are dashboard-only settings — nothing in this repo can assert them, so
+they need to be set by hand on **each** hosted project (production and any
+staging project from `DP-4`) and re-checked if a new one is ever created.
+Decided values, to keep this deliberate rather than left at whatever the
+project defaulted to:
+
+| Setting                                            | Where (Dashboard)                              | Value                                                                                 |
+| --------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Time-box session (force logout after)              | Authentication → Sessions                       | Off — refresh-token rotation (already on, see `config.toml`) plus revoke-on-sign-out is enough for this app |
+| Inactivity timeout                                  | Authentication → Sessions                       | 30 days — long enough that "stay logged in" still feels true, short enough to reap abandoned devices |
+| Leaked-password protection                          | Authentication → Policies → Password (Attack Protection) | On                                                                                    |
+| Minimum password length                             | Authentication → Policies → Password            | 8, matching `minimum_password_length` in `config.toml` and the client check in `SignupPage.tsx` (see `GAP-5`) |
+| Confirm email                                       | Authentication → Providers → Email              | **On** in production/staging (it's `enable_confirmations = false` in `config.toml` on purpose, for fast local sign-in without an inbox) |
+| Redirect URLs allowlist                             | Authentication → URL Configuration              | Exactly that project's own origin(s) — the production domain for the production project, the staging domain for staging. Never leave `localhost` or the other project's origin in the list. |
+
+Re-verify this table any time a new hosted project is created (`DP-4`), since
+none of it carries over automatically from `config.toml` — that file only
+configures the **local** Docker stack.
+
 ---
 
 ## 6. Exposing the dev server for outside testing

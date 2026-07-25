@@ -508,6 +508,7 @@ $$;
 create index accounts_user_idx        on public.accounts (user_id);
 create index categories_user_idx      on public.categories (user_id);
 create index credit_cards_user_idx    on public.credit_cards (user_id);
+create index credit_cards_account_idx on public.credit_cards (issuing_account_id);
 create index transactions_user_date   on public.transactions (user_id, date);
 create index transactions_account_idx on public.transactions (account_id);
 create index transactions_to_acc_idx  on public.transactions (to_account_id);
