@@ -382,7 +382,8 @@ create table public.goals (
 -- ---------------------------------------------------------------------------
 --
 -- card_id is set on bills generated from a credit card's closed billing cycle
--- (store.ensureCardBills), so the invoice traces back to the card.
+-- (syncCardBills, in features/finance/store/cards.ts), so the invoice traces
+-- back to the card.
 
 create table public.bills (
   id         uuid primary key default gen_random_uuid(),

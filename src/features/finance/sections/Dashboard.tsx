@@ -50,7 +50,6 @@ import {
 } from '../store'
 import { BillBadge, PayBillDialog } from '../bills/BillUI'
 
-/** Band → CSS color. Amber has no token, so it is inlined. */
 const BAND_COLOR: Record<HealthBand, string> = {
   healthy: 'var(--success)',
   good: 'var(--primary)',
