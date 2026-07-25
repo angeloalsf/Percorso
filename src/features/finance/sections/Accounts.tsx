@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/select'
 import { useLang, useT, type TKey } from '@/i18n'
 import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import {
   accountBalance,
@@ -159,19 +160,33 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
   const [type, setType] = useState<AccountType>(account?.type ?? 'checking')
   const [initialBalance, setInitialBalance] = useState(account ? String(account.initialBalance) : '0')
   const [color, setColor] = useState(account?.color ?? PALETTE[2])
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [balanceError, setBalanceError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const submit = async (): Promise<void> => {
+    setNameError(null)
+    setBalanceError(null)
+
     if (!name.trim()) {
-      setError(t('errors.nameRequired'))
+      setNameError(t('errors.nameRequired'))
       return
     }
-    const balance = Number(initialBalance)
+    // Unlike most amount fields, a starting balance can legitimately be negative
+    // (tracking began mid-overdraft), so only format/magnitude are checked here.
+    const parsedBalance = parseAmount(initialBalance)
+    if (parsedBalance === null) {
+      setBalanceError(t('finance.amountInvalid'))
+      return
+    }
+    if (Math.abs(parsedBalance) > MAX_AMOUNT) {
+      setBalanceError(t('finance.amountTooLarge'))
+      return
+    }
     const input: AccountInput = {
       name: name.trim(),
       type,
-      initialBalance: Number.isNaN(balance) ? 0 : balance,
+      initialBalance: parsedBalance,
       color
     }
     setSubmitting(true)
@@ -193,7 +208,7 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
         </DialogHeader>
         <DialogBody>
           <FormGrid>
-            <Field label={t('common.name')} error={error ?? undefined}>
+            <Field label={t('common.name')} error={nameError ?? undefined}>
               <Input
                 value={name}
                 placeholder={t('finance.accountNamePlaceholder')}
@@ -210,10 +225,12 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
                 ))}
               </Select>
             </Field>
-            <Field label={t('finance.initialBalance')}>
+            <Field label={t('finance.initialBalance')} error={balanceError ?? undefined}>
               <Input
                 type="number"
                 inputMode="decimal"
+                min={-MAX_AMOUNT}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={initialBalance}
                 onChange={(e) => setInitialBalance(e.target.value)}

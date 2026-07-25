@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { useT } from '@/i18n'
+import { useT, type TKey } from '@/i18n'
 import { todayISO } from '@/lib/dates'
+import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import {
   addConsortium,
   addLoan,
@@ -45,14 +46,30 @@ function initialFields(plan: Loan | Consortium | null): PlanFields {
   }
 }
 
-/** Returns the parsed values, or a translation key describing what's wrong. */
-function validate(f: PlanFields): { error: 'name' | 'amount' | 'day' | 'installments' } | { values: LoanInput } {
-  if (!f.name.trim()) return { error: 'name' }
-  const totalAmount = Number(f.totalAmount)
-  const installmentAmount = Number(f.installmentAmount)
-  if (!(totalAmount > 0) || !(installmentAmount > 0)) return { error: 'amount' }
+type PlanField = 'name' | 'totalAmount' | 'installmentAmount' | 'day' | 'installments'
+
+interface PlanFieldError {
+  field: PlanField
+  key: TKey
+}
+
+/** Returns the parsed values, or which field is wrong and the key describing why. */
+function validate(f: PlanFields): PlanFieldError | { values: LoanInput } {
+  if (!f.name.trim()) return { field: 'name', key: 'errors.nameRequired' }
+
+  const totalAmount = parseAmount(f.totalAmount)
+  if (totalAmount === null || totalAmount <= 0) return { field: 'totalAmount', key: 'finance.amountInvalid' }
+  if (totalAmount > MAX_AMOUNT) return { field: 'totalAmount', key: 'finance.amountTooLarge' }
+
+  const installmentAmount = parseAmount(f.installmentAmount)
+  if (installmentAmount === null || installmentAmount <= 0) {
+    return { field: 'installmentAmount', key: 'finance.amountInvalid' }
+  }
+  if (installmentAmount > MAX_AMOUNT) return { field: 'installmentAmount', key: 'finance.amountTooLarge' }
+
   const dueDay = Number(f.dueDay)
-  if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return { error: 'day' }
+  if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return { field: 'day', key: 'finance.dayInvalid' }
+
   const installmentsTotal = Number(f.installmentsTotal)
   const installmentsPaid = Number(f.installmentsPaid)
   if (
@@ -63,7 +80,7 @@ function validate(f: PlanFields): { error: 'name' | 'amount' | 'day' | 'installm
     installmentsPaid < 0 ||
     installmentsPaid > installmentsTotal
   ) {
-    return { error: 'installments' }
+    return { field: 'installments', key: 'finance.installmentsInvalid' }
   }
   return {
     values: {
@@ -85,7 +102,7 @@ interface PlanDialogProps {
   setFields: (f: PlanFields) => void
   extra?: React.ReactNode
   submitting: boolean
-  error: string | null
+  error: PlanFieldError | null
   onSubmit: () => void
   onClose: () => void
 }
@@ -103,6 +120,7 @@ function PlanDialog({
 }: PlanDialogProps) {
   const t = useT()
   const set = (patch: Partial<PlanFields>): void => setFields({ ...fields, ...patch })
+  const errorFor = (field: PlanField): string | undefined => (error?.field === field ? t(error.key) : undefined)
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -112,7 +130,7 @@ function PlanDialog({
         </DialogHeader>
         <DialogBody>
           <FormGrid>
-            <Field label={t('finance.loanName')} span2 error={error ?? undefined}>
+            <Field label={t('finance.loanName')} span2 error={errorFor('name')}>
               <Input
                 value={fields.name}
                 placeholder={namePlaceholder}
@@ -120,27 +138,29 @@ function PlanDialog({
                 autoFocus
               />
             </Field>
-            <Field label={t('finance.totalAmount')}>
+            <Field label={t('finance.totalAmount')} error={errorFor('totalAmount')}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={fields.totalAmount}
                 onChange={(e) => set({ totalAmount: e.target.value })}
               />
             </Field>
-            <Field label={t('finance.installmentAmount')}>
+            <Field label={t('finance.installmentAmount')} error={errorFor('installmentAmount')}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={fields.installmentAmount}
                 onChange={(e) => set({ installmentAmount: e.target.value })}
               />
             </Field>
-            <Field label={t('finance.installmentsTotal')}>
+            <Field label={t('finance.installmentsTotal')} error={errorFor('installments')}>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -150,7 +170,7 @@ function PlanDialog({
                 onChange={(e) => set({ installmentsTotal: e.target.value })}
               />
             </Field>
-            <Field label={t('finance.installmentsPaid')}>
+            <Field label={t('finance.installmentsPaid')} error={errorFor('installments')}>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -162,7 +182,7 @@ function PlanDialog({
             <Field label={t('finance.paidAsOf')}>
               <Input type="date" value={fields.paidAsOf} onChange={(e) => set({ paidAsOf: e.target.value })} />
             </Field>
-            <Field label={t('finance.dueDay')}>
+            <Field label={t('finance.dueDay')} error={errorFor('day')}>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -190,29 +210,23 @@ function PlanDialog({
 }
 
 function useSubmitState() {
-  const t = useT()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<PlanFieldError | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const messageFor = (kind: 'name' | 'amount' | 'day' | 'installments'): string => {
-    if (kind === 'name') return t('errors.nameRequired')
-    if (kind === 'amount') return t('finance.amountInvalid')
-    if (kind === 'day') return t('finance.dayInvalid')
-    return t('finance.installmentsInvalid')
-  }
-  return { error, setError, submitting, setSubmitting, messageFor }
+  return { error, setError, submitting, setSubmitting }
 }
 
 export function LoanForm({ accountId, loan, onClose }: { accountId: string; loan: Loan | null; onClose: () => void }) {
   const t = useT()
   const [fields, setFields] = useState<PlanFields>(initialFields(loan))
-  const { error, setError, submitting, setSubmitting, messageFor } = useSubmitState()
+  const { error, setError, submitting, setSubmitting } = useSubmitState()
 
   const submit = async (): Promise<void> => {
     const result = validate(fields)
-    if ('error' in result) {
-      setError(messageFor(result.error))
+    if ('field' in result) {
+      setError(result)
       return
     }
+    setError(null)
     const input: LoanInput = { ...result.values, accountId }
     setSubmitting(true)
     const saved = loan ? await updateLoan(loan.id, input) : await addLoan(input)
@@ -251,14 +265,15 @@ export function ConsortiumForm({
   const t = useT()
   const [fields, setFields] = useState<PlanFields>(initialFields(consortium))
   const [contemplated, setContemplated] = useState(consortium?.contemplated ?? false)
-  const { error, setError, submitting, setSubmitting, messageFor } = useSubmitState()
+  const { error, setError, submitting, setSubmitting } = useSubmitState()
 
   const submit = async (): Promise<void> => {
     const result = validate(fields)
-    if ('error' in result) {
-      setError(messageFor(result.error))
+    if ('field' in result) {
+      setError(result)
       return
     }
+    setError(null)
     const input: ConsortiumInput = { ...result.values, accountId, contemplated }
     setSubmitting(true)
     const saved = consortium ? await updateConsortium(consortium.id, input) : await addConsortium(input)

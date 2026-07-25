@@ -14,6 +14,7 @@ import { Segmented } from '@/components/ui/segmented'
 import { Select } from '@/components/ui/select'
 import { useLang, useT } from '@/i18n'
 import { formatCurrency, formatDate } from '@/lib/format'
+import { isSaneDate, MAX_AMOUNT, MAX_SANE_DATE, MIN_SANE_DATE, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import { addGoal, deleteGoal, goalProgress, updateGoal, useFinanceStore, type Goal, type GoalInput } from '../store'
 
@@ -118,33 +119,64 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
   const [mode, setMode] = useState<TrackMode>(goal?.accountId ? 'account' : 'manual')
   const [accountId, setAccountId] = useState(goal?.accountId ?? activeAccounts[0]?.id ?? '')
   const [savedAmount, setSavedAmount] = useState(goal ? String(goal.savedAmount) : '')
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [targetAmountError, setTargetAmountError] = useState<string | null>(null)
+  const [targetDateError, setTargetDateError] = useState<string | null>(null)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [savedAmountError, setSavedAmountError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const canTrackAccount = activeAccounts.length > 0
   const effectiveMode: TrackMode = canTrackAccount ? mode : 'manual'
 
   const submit = async (): Promise<void> => {
+    setNameError(null)
+    setTargetAmountError(null)
+    setTargetDateError(null)
+    setAccountError(null)
+    setSavedAmountError(null)
+
     if (!name.trim()) {
-      setError(t('errors.nameRequired'))
+      setNameError(t('errors.nameRequired'))
       return
     }
-    const parsedTarget = Number(targetAmount)
-    if (!targetAmount || Number.isNaN(parsedTarget) || parsedTarget <= 0) {
-      setError(t('finance.amountInvalid'))
+    const parsedTarget = parseAmount(targetAmount)
+    if (parsedTarget === null || parsedTarget <= 0) {
+      setTargetAmountError(t('finance.amountInvalid'))
+      return
+    }
+    if (parsedTarget > MAX_AMOUNT) {
+      setTargetAmountError(t('finance.amountTooLarge'))
+      return
+    }
+    if (targetDate && !isSaneDate(targetDate)) {
+      setTargetDateError(t('finance.dateOutOfRange'))
       return
     }
     const useAccount = effectiveMode === 'account'
     if (useAccount && !accountId) {
-      setError(t('finance.accountRequired'))
+      setAccountError(t('finance.accountRequired'))
       return
+    }
+    let saved = 0
+    if (!useAccount && savedAmount.trim() !== '') {
+      const parsedSaved = parseAmount(savedAmount)
+      if (parsedSaved === null || parsedSaved < 0) {
+        setSavedAmountError(t('finance.amountInvalid'))
+        return
+      }
+      if (parsedSaved > MAX_AMOUNT) {
+        setSavedAmountError(t('finance.amountTooLarge'))
+        return
+      }
+      saved = parsedSaved
     }
     const input: GoalInput = {
       name: name.trim(),
       targetAmount: parsedTarget,
       ...(targetDate ? { targetDate } : {}),
       ...(useAccount ? { accountId } : {}),
-      savedAmount: useAccount ? 0 : Math.max(0, Number(savedAmount) || 0)
+      savedAmount: useAccount ? 0 : saved
     }
     setSubmitting(true)
     const result = goal ? await updateGoal(goal.id, input) : await addGoal(input)
@@ -165,7 +197,7 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
         </DialogHeader>
         <DialogBody>
           <FormGrid>
-            <Field label={t('finance.goalName')} span2>
+            <Field label={t('finance.goalName')} span2 error={nameError ?? undefined}>
               <Input
                 value={name}
                 placeholder={t('finance.goalNamePlaceholder')}
@@ -173,18 +205,25 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
                 autoFocus
               />
             </Field>
-            <Field label={t('finance.targetAmount')}>
+            <Field label={t('finance.targetAmount')} error={targetAmountError ?? undefined}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={targetAmount}
                 onChange={(e) => setTargetAmount(e.target.value)}
               />
             </Field>
-            <Field label={t('finance.targetDateOptional')}>
-              <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+            <Field label={t('finance.targetDateOptional')} error={targetDateError ?? undefined}>
+              <Input
+                type="date"
+                value={targetDate}
+                min={MIN_SANE_DATE}
+                max={MAX_SANE_DATE}
+                onChange={(e) => setTargetDate(e.target.value)}
+              />
             </Field>
             {canTrackAccount && (
               <Field label={t('finance.goalTracking')} span2>
@@ -199,7 +238,7 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
               </Field>
             )}
             {effectiveMode === 'account' ? (
-              <Field label={t('finance.account')} span2>
+              <Field label={t('finance.account')} span2 error={accountError ?? undefined}>
                 <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                   {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -210,11 +249,12 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
                 <p className="mt-1 text-[11px] text-muted-foreground">{t('finance.goalAccountHint')}</p>
               </Field>
             ) : (
-              <Field label={t('finance.savedAmount')} span2>
+              <Field label={t('finance.savedAmount')} span2 error={savedAmountError ?? undefined}>
                 <Input
                   type="number"
                   inputMode="decimal"
                   min={0}
+                  max={MAX_AMOUNT}
                   step={0.01}
                   value={savedAmount}
                   placeholder="0.00"
@@ -223,7 +263,6 @@ function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void })
               </Field>
             )}
           </FormGrid>
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>

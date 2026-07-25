@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/select'
 import { useLang, useT } from '@/i18n'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import {
   addCard,
@@ -133,7 +134,10 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
   const [dueDay, setDueDay] = useState(card ? String(card.dueDay) : '10')
   const [creditLimit, setCreditLimit] = useState(card?.creditLimit != null ? String(card.creditLimit) : '')
   const [color, setColor] = useState(card?.color ?? PALETTE[5] ?? PALETTE[0])
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [closingDayError, setClosingDayError] = useState<string | null>(null)
+  const [dueDayError, setDueDayError] = useState<string | null>(null)
+  const [creditLimitError, setCreditLimitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const validDay = (v: string): boolean => {
@@ -142,21 +146,42 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
   }
 
   const submit = async (): Promise<void> => {
+    setNameError(null)
+    setClosingDayError(null)
+    setDueDayError(null)
+    setCreditLimitError(null)
+
     if (!name.trim()) {
-      setError(t('errors.nameRequired'))
+      setNameError(t('errors.nameRequired'))
       return
     }
-    if (!validDay(closingDay) || !validDay(dueDay)) {
-      setError(t('finance.dayInvalid'))
+    if (!validDay(closingDay)) {
+      setClosingDayError(t('finance.dayInvalid'))
       return
     }
-    const limit = creditLimit.trim() === '' ? undefined : Number(creditLimit)
+    if (!validDay(dueDay)) {
+      setDueDayError(t('finance.dayInvalid'))
+      return
+    }
+    let limit: number | undefined
+    if (creditLimit.trim() !== '') {
+      const parsedLimit = parseAmount(creditLimit)
+      if (parsedLimit === null || parsedLimit < 0) {
+        setCreditLimitError(t('finance.amountInvalid'))
+        return
+      }
+      if (parsedLimit > MAX_AMOUNT) {
+        setCreditLimitError(t('finance.amountTooLarge'))
+        return
+      }
+      limit = parsedLimit
+    }
     const input: CardInput = {
       name: name.trim(),
       ...(issuingAccountId ? { issuingAccountId } : {}),
       closingDay: Number(closingDay),
       dueDay: Number(dueDay),
-      ...(limit != null && !Number.isNaN(limit) && limit >= 0 ? { creditLimit: limit } : {}),
+      ...(limit != null ? { creditLimit: limit } : {}),
       color
     }
     setSubmitting(true)
@@ -178,7 +203,7 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
         </DialogHeader>
         <DialogBody>
           <FormGrid>
-            <Field label={t('finance.cardName')} span2 error={error ?? undefined}>
+            <Field label={t('finance.cardName')} span2 error={nameError ?? undefined}>
               <Input
                 value={name}
                 placeholder={t('finance.cardNamePlaceholder')}
@@ -196,7 +221,7 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
                 ))}
               </Select>
             </Field>
-            <Field label={t('finance.closingDay')}>
+            <Field label={t('finance.closingDay')} error={closingDayError ?? undefined}>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -206,7 +231,7 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
                 onChange={(e) => setClosingDay(e.target.value)}
               />
             </Field>
-            <Field label={t('finance.dueDay')}>
+            <Field label={t('finance.dueDay')} error={dueDayError ?? undefined}>
               <Input
                 type="number"
                 inputMode="numeric"
@@ -216,11 +241,12 @@ function CardForm({ card, onClose }: { card: CreditCard | null; onClose: () => v
                 onChange={(e) => setDueDay(e.target.value)}
               />
             </Field>
-            <Field label={t('finance.creditLimitOptional')}>
+            <Field label={t('finance.creditLimitOptional')} error={creditLimitError ?? undefined}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={creditLimit}
                 placeholder="—"

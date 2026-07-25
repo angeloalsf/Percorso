@@ -15,6 +15,7 @@ import { useLang, useT } from '@/i18n'
 import { addDays, todayISO } from '@/lib/dates'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useProfile } from '@/state/profile'
+import { isSaneDate, MAX_AMOUNT, MAX_SANE_DATE, MIN_SANE_DATE, parseAmount } from '@/lib/validation'
 import {
   addBill,
   deleteBill,
@@ -227,17 +228,31 @@ function BillForm({ bill, onClose }: { bill: Bill | null; onClose: () => void })
   const [dueDate, setDueDate] = useState(bill?.dueDate ?? todayISO())
   const [status, setStatus] = useState<BillStatus>(bill?.status ?? 'pending')
   const [recurring, setRecurring] = useState(bill?.recurring ?? false)
-  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [amountError, setAmountError] = useState<string | null>(null)
+  const [dueDateError, setDueDateError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const submit = async (): Promise<void> => {
+    setNameError(null)
+    setAmountError(null)
+    setDueDateError(null)
+
     if (!name.trim()) {
-      setError(t('errors.nameRequired'))
+      setNameError(t('errors.nameRequired'))
       return
     }
-    const parsedAmount = Number(amount)
-    if (!amount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError(t('finance.amountInvalid'))
+    const parsedAmount = parseAmount(amount)
+    if (parsedAmount === null || parsedAmount <= 0) {
+      setAmountError(t('finance.amountInvalid'))
+      return
+    }
+    if (parsedAmount > MAX_AMOUNT) {
+      setAmountError(t('finance.amountTooLarge'))
+      return
+    }
+    if (!isSaneDate(dueDate)) {
+      setDueDateError(t('finance.dateOutOfRange'))
       return
     }
     const input: BillInput = { name: name.trim(), amount: parsedAmount, dueDate, status, recurring }
@@ -260,7 +275,7 @@ function BillForm({ bill, onClose }: { bill: Bill | null; onClose: () => void })
         </DialogHeader>
         <DialogBody>
           <FormGrid>
-            <Field label={t('finance.billName')} span2>
+            <Field label={t('finance.billName')} span2 error={nameError ?? undefined}>
               <Input
                 value={name}
                 placeholder={t('finance.billNamePlaceholder')}
@@ -268,19 +283,26 @@ function BillForm({ bill, onClose }: { bill: Bill | null; onClose: () => void })
                 autoFocus
               />
             </Field>
-            <Field label={t('finance.amount')}>
+            <Field label={t('finance.amount')} error={amountError ?? undefined}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={amount}
                 placeholder="0.00"
                 onChange={(e) => setAmount(e.target.value)}
               />
             </Field>
-            <Field label={t('finance.dueDate')}>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <Field label={t('finance.dueDate')} error={dueDateError ?? undefined}>
+              <Input
+                type="date"
+                value={dueDate}
+                min={MIN_SANE_DATE}
+                max={MAX_SANE_DATE}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
             </Field>
             <Field label={t('finance.billStatus')} span2>
               <Segmented<BillStatus>
@@ -302,7 +324,6 @@ function BillForm({ bill, onClose }: { bill: Bill | null; onClose: () => void })
               <span className="text-sm">{t('finance.billRecurring')}</span>
             </label>
           </FormGrid>
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>

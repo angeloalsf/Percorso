@@ -15,6 +15,7 @@ import { useLang, useT } from '@/i18n'
 import { monthKey, todayISO } from '@/lib/dates'
 import { formatCurrency, formatDate, formatMonthLong } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import {
   addTransaction,
@@ -276,15 +277,27 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
   const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? '')
   const [note, setNote] = useState(transaction?.note ?? '')
   const [isRecurring, setIsRecurring] = useState(transaction?.isRecurring ?? false)
-  const [error, setError] = useState<string | null>(null)
+  const [amountError, setAmountError] = useState<string | null>(null)
+  const [accountError, setAccountError] = useState<string | null>(null)
+  const [toAccountError, setToAccountError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const typeCategories = categories.filter((c) => c.type === type)
+  // A transfer needs a destination distinct from the source before it can be saved.
+  const transferInvalid = type === 'transfer' && (!toAccountId || toAccountId === accountId)
 
   const submit = async (): Promise<void> => {
-    const parsedAmount = Number(amount)
-    if (!amount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError(t('finance.amountInvalid'))
+    setAmountError(null)
+    setAccountError(null)
+    setToAccountError(null)
+
+    const parsedAmount = parseAmount(amount)
+    if (parsedAmount === null || parsedAmount <= 0) {
+      setAmountError(t('finance.amountInvalid'))
+      return
+    }
+    if (parsedAmount > MAX_AMOUNT) {
+      setAmountError(t('finance.amountTooLarge'))
       return
     }
     // Resolve the source: expenses use paidWith (account or card); income/transfer use accountId.
@@ -297,11 +310,11 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
       srcAccountId = accountId
     }
     if (!srcAccountId && !srcCardId) {
-      setError(t('finance.accountRequired'))
+      setAccountError(t('finance.accountRequired'))
       return
     }
     if (type === 'transfer' && (!toAccountId || toAccountId === srcAccountId)) {
-      setError(t('finance.transferAccountsInvalid'))
+      setToAccountError(t('finance.transferAccountsInvalid'))
       return
     }
     const input: TransactionInput = {
@@ -347,11 +360,12 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
             ]}
           />
           <FormGrid>
-            <Field label={t('finance.amount')}>
+            <Field label={t('finance.amount')} error={amountError ?? undefined}>
               <Input
                 type="number"
                 inputMode="decimal"
                 min={0}
+                max={MAX_AMOUNT}
                 step={0.01}
                 value={amount}
                 placeholder="0.00"
@@ -363,7 +377,7 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
             {type === 'expense' ? (
-              <Field label={t('finance.paidWith')}>
+              <Field label={t('finance.paidWith')} error={accountError ?? undefined}>
                 <Select value={paidWith} onChange={(e) => setPaidWith(e.target.value)}>
                   {activeAccounts.length > 0 && (
                     <optgroup label={t('finance.groupAccounts')}>
@@ -386,7 +400,10 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
                 </Select>
               </Field>
             ) : (
-              <Field label={type === 'transfer' ? t('finance.fromAccount') : t('finance.account')}>
+              <Field
+                label={type === 'transfer' ? t('finance.fromAccount') : t('finance.account')}
+                error={accountError ?? undefined}
+              >
                 <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                   {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -397,7 +414,7 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
               </Field>
             )}
             {type === 'transfer' ? (
-              <Field label={t('finance.toAccount')}>
+              <Field label={t('finance.toAccount')} error={toAccountError ?? undefined}>
                 <Select value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
                   <option value="">—</option>
                   {activeAccounts
@@ -440,13 +457,12 @@ function TransactionForm({ transaction, onClose }: { transaction: Transaction | 
               </label>
             )}
           </FormGrid>
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </DialogBody>
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={() => void submit()} disabled={submitting}>
+          <Button onClick={() => void submit()} disabled={submitting || transferInvalid}>
             {t('common.save')}
           </Button>
         </DialogFooter>
