@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CreditCard as CreditCardIcon, Landmark, Plus, Receipt } from 'lucide-react'
+import { ChevronLeft, CreditCard as CreditCardIcon, Landmark, Plus, Receipt } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { ColorDot, List, ListRow } from '@/components/ui/list'
-import { ProgressBar } from '@/components/ui/progress-bar'
+import { ColorDot, DrillRow, List } from '@/components/ui/list'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLang, useT } from '@/i18n'
 import { formatCurrency } from '@/lib/format'
@@ -133,53 +132,6 @@ export function AccountDetailPage() {
         <ConsortiumForm accountId={account.id} consortium={null} onClose={() => setAdding(null)} />
       )}
     </div>
-  )
-}
-
-/** One tappable row that drills down a level. */
-function DrillRow({
-  color,
-  name,
-  primary,
-  secondary,
-  archived,
-  archivedLabel,
-  badge,
-  progress,
-  onClick
-}: {
-  color?: string
-  name: string
-  primary: string
-  secondary: string
-  archived?: boolean
-  archivedLabel?: string
-  badge?: string
-  progress?: { value: number; max: number }
-  onClick: () => void
-}) {
-  return (
-    <ListRow className={cn('p-0', archived && 'opacity-55')}>
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/60"
-        onClick={onClick}
-      >
-        {color && <ColorDot color={color} />}
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="truncate text-sm font-medium">{name}</span>
-            {badge && <Badge>{badge}</Badge>}
-            {archived && archivedLabel && <Badge>{archivedLabel}</Badge>}
-          </span>
-          <span className="tabular mt-0.5 block text-sm font-semibold">
-            {primary} <span className="text-xs font-normal text-muted-foreground">{secondary}</span>
-          </span>
-          {progress && <ProgressBar className="mt-2 max-w-sm" value={progress.value} max={progress.max} />}
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-      </button>
-    </ListRow>
   )
 }
 

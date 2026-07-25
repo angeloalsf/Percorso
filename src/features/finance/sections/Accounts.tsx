@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Archive, ArchiveRestore, ChevronRight, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
+import { Archive, ArchiveRestore, Pencil, Plus, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,11 +10,10 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FormGrid } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { ColorDot, List, ListRow } from '@/components/ui/list'
+import { DrillRow, List } from '@/components/ui/list'
 import { Select } from '@/components/ui/select'
 import { useLang, useT, type TKey } from '@/i18n'
 import { formatCurrency } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import {
@@ -87,55 +86,49 @@ export function Accounts() {
         <List>
           {accounts.map((account) => {
             const balance = balances.get(account.id) ?? 0
+            const count = productCount.get(account.id) ?? 0
             return (
-              <ListRow key={account.id} className={cn(account.archived && 'opacity-55')}>
-                <ColorDot color={account.color} />
-                {/* The row body opens the account's detail (cards / loans /
-                    consórcios); the action buttons beside it are siblings, so
-                    they never trigger this navigation. */}
-                <button
-                  type="button"
-                  className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring/60"
-                  onClick={() => void navigate(`/finances/accounts/${account.id}`)}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="truncate text-sm font-medium">{account.name}</span>
-                      <Badge>{t(TYPE_KEYS[account.type])}</Badge>
-                      {account.archived && <Badge>{t('finance.archived')}</Badge>}
-                    </span>
-                    <span
-                      className={cn('tabular mt-0.5 block text-sm font-semibold', balance < 0 && 'text-destructive')}
+              <DrillRow
+                key={account.id}
+                color={account.color}
+                name={account.name}
+                badge={t(TYPE_KEYS[account.type])}
+                archived={account.archived}
+                archivedLabel={t('finance.archived')}
+                primary={money(balance)}
+                primaryClassName={balance < 0 ? 'text-destructive' : undefined}
+                trailingBadge={count > 0 ? <Badge>{count}</Badge> : undefined}
+                onClick={() => void navigate(`/finances/accounts/${account.id}`)}
+                actions={
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={account.archived ? t('finance.unarchive') : t('finance.archive')}
+                      onClick={() => void setAccountArchived(account.id, !account.archived)}
                     >
-                      {money(balance)}
-                    </span>
-                  </span>
-                  {(productCount.get(account.id) ?? 0) > 0 && <Badge>{productCount.get(account.id)}</Badge>}
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                </button>
-                <div className="flex shrink-0 items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={account.archived ? t('finance.unarchive') : t('finance.archive')}
-                    onClick={() => void setAccountArchived(account.id, !account.archived)}
-                  >
-                    {account.archived ? <ArchiveRestore /> : <Archive />}
-                  </Button>
-                  <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(account)}>
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={t('common.delete')}
-                    onClick={() => setDeleting(account)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              </ListRow>
+                      {account.archived ? <ArchiveRestore /> : <Archive />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('common.edit')}
+                      onClick={() => setEditing(account)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={t('common.delete')}
+                      onClick={() => setDeleting(account)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </>
+                }
+              />
             )
           })}
         </List>
