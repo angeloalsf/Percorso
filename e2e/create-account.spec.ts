@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { login } from './utils'
+import { login, openFinanceSection } from './utils'
 
 test('creates a new bank account', async ({ page }) => {
   await login(page)
-  await page.getByRole('tab', { name: 'Bank accounts' }).click()
+  await openFinanceSection(page, 'Bank accounts')
 
   const name = `E2E Test Account ${Date.now()}`
   await page.getByRole('button', { name: 'New account' }).click()

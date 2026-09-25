@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { login } from './utils'
+import { login, openFinanceSection } from './utils'
 
 test('pays the Nubank card invoice bill', async ({ page }) => {
   await login(page)
-  await page.getByRole('tab', { name: 'Bills' }).click()
+  await openFinanceSection(page, 'Bills')
 
   // The card's invoice bill is auto-generated on load (store.ts syncCardBills)
   // and shares its name with the card ("Nubank", supabase/seed/test-data.sql).
