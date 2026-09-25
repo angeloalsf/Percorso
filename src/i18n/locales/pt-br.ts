@@ -71,6 +71,8 @@ export const ptBR: typeof en = {
     explore: 'Explorar',
     routine: 'Rotina',
     dayView: 'Visão do dia',
+    openDayView: 'Abrir visão do dia',
+    closeDayView: 'Fechar visão do dia',
     daySubtitle: 'Um passo de cada vez.',
     dashboardTitle: 'Seu painel financeiro',
     dashboardIntro: 'Um olhar claro sobre o seu dinheiro e seus próximos passos.'

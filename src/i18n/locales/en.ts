@@ -72,6 +72,8 @@ export const en = {
     explore: 'Explore',
     routine: 'Routine',
     dayView: 'Day view',
+    openDayView: 'Open day view',
+    closeDayView: 'Close day view',
     daySubtitle: 'One step at a time.',
     dashboardTitle: 'Your financial dashboard',
     dashboardIntro: 'A clear view of your money and your next steps.'

@@ -1,5 +1,4 @@
 import { Waypoints } from 'lucide-react'
-import { EnvBanner } from '@/app/EnvBanner'
 import { supabaseConfigured } from '@/lib/supabase'
 
 interface AuthShellProps {
@@ -12,7 +11,6 @@ interface AuthShellProps {
 export function AuthShell({ title, subtitle, children }: AuthShellProps) {
   return (
     <>
-      <EnvBanner />
       <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8">
         <div className="w-full max-w-sm">
           <div className="mb-6 flex flex-col items-center text-center">

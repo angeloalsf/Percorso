@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, ChevronRight, Target } from 'lucide-react'
+import { CalendarDays, ChevronRight, Target, X } from 'lucide-react'
 import { monthDays, monthSummary } from '@/features/calendar/dates'
 import { useCalendarStore } from '@/features/calendar/store'
 import { billAlerts, goalProgress, useFinanceStore } from '@/features/finance/store'
@@ -11,7 +11,15 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { useProfile } from '@/state/profile'
 
 /** Read-only desktop context pane. All figures come from the existing stores. */
-export function DesktopDayPanel({ userId, openGoals }: { userId: string; openGoals: () => void }) {
+export function DesktopDayPanel({
+  userId,
+  openGoals,
+  onClose
+}: {
+  userId: string
+  openGoals: () => void
+  onClose: () => void
+}) {
   const t = useT()
   const lang = useLang()
   const currency = useProfile((s) => s.currency)
@@ -55,8 +63,17 @@ export function DesktopDayPanel({ userId, openGoals }: { userId: string; openGoa
       className="hidden min-h-0 overflow-y-auto rounded-lg border bg-card xl:block"
       aria-label={t('workspace.dayView')}
     >
-      <div className="sticky top-0 z-10 border-b bg-card px-5 py-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-        {t('workspace.dayView')}
+      <div className="sticky top-0 z-10 flex h-11 items-center justify-between border-b bg-card pr-2 pl-5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+        <span>{t('workspace.dayView')}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          title={t('workspace.closeDayView')}
+          aria-label={t('workspace.closeDayView')}
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <X className="size-4" />
+        </button>
       </div>
       <div className="space-y-6 p-5">
         <div>
