@@ -13,7 +13,7 @@ O Calendário é o segundo módulo do Percorso, disponível em `/calendar` para 
 
 `CalendarPage.tsx` mantém o mês e a seleção na interface; `store.ts` concentra as operações Supabase e o cache temporário. O `AppLayout` limpa esse cache ao encerrar a sessão, impedindo que dados de outra conta permaneçam em memória. As datas são strings `YYYY-MM-DD` locais, conforme `src/lib/dates.ts`, sem conversão UTC para os quadrados do calendário.
 
-A migration `20260925120000_calendar_days.sql` cria `public.calendar_days` com uma linha por `(user_id, date)`, restrição dos dois estados, índice por usuário/data, políticas RLS de proprietário e permissões explícitas ao papel `authenticated`. Aplicar com `npx supabase db push` ou pelo fluxo de migrations do ambiente. `supabase/schema-full.sql` é apenas um retrato destrutivo para bancos descartáveis: **não o execute no banco de produção**. As seeds local e demonstrativa incluem dias azuis e vermelhos.
+A migration `20260925120000_calendar_days.sql` cria `public.calendar_days` com uma linha por `(user_id, date)`, restrição dos dois estados, índice por usuário/data, políticas RLS de proprietário e permissões explícitas ao papel `authenticated`. Aplicar com `npx supabase db push` ou pelo fluxo de migrations do ambiente. `supabase/schema-full.sql` é apenas um retrato destrutivo para bancos descartáveis: **não o execute no banco de produção**. As seeds existentes não foram alteradas nesta branch; após aplicar a migration, marque dias manualmente na conta de teste para validar a tela.
 
 ## Verificação
 
