@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { AuthGate } from '@/auth/AuthGate'
@@ -10,6 +11,11 @@ import { Toaster } from '@/components/ui/toaster'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { AccountDetailPage } from '@/features/finance/accounts/AccountDetailPage'
 import { AccountItemPage } from '@/features/finance/accounts/AccountItemPage'
+import { PageSkeleton } from '@/components/ui/page-skeleton'
+
+const CalendarPage = lazy(() =>
+  import('@/features/calendar/CalendarPage').then((module) => ({ default: module.CalendarPage }))
+)
 
 export default function App() {
   return (
@@ -25,6 +31,14 @@ export default function App() {
             {/* Protected: redirect to /login without a session. */}
             <Route element={<AppLayout />}>
               <Route path="/finances" element={<FinancePage />} />
+              <Route
+                path="/calendar"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <CalendarPage />
+                  </Suspense>
+                }
+              />
               {/* Bank-account drill-down: list → account (tabs) → one item. */}
               <Route path="/finances/accounts/:accountId" element={<AccountDetailPage />} />
               <Route path="/finances/accounts/:accountId/:kind/:itemId" element={<AccountItemPage />} />

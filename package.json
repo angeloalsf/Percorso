@@ -22,7 +22,7 @@
     "e2e": "playwright test",
     "knip": "knip",
     "deadcode": "ts-prune",
-    "madge": "madge --circular --extensions ts,tsx src",
+    "madge": "node scripts/check-cycles.mjs",
     "lhci": "lhci autorun",
     "prepare": "husky"
   },
@@ -70,7 +70,7 @@
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "^4.3.3",
     "ts-prune": "^0.10.3",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.65.0",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"

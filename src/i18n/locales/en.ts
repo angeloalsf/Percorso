@@ -64,6 +64,7 @@ export const en = {
   },
   nav: {
     finances: 'Finances',
+    calendar: 'Calendar',
     settings: 'Settings'
   },
   settings: {
@@ -81,6 +82,27 @@ export const en = {
     privacy: 'Privacy & data',
     privacyHint:
       'Your data lives in your private Supabase database, protected by Row Level Security. Only you can read it.'
+  },
+  calendar: {
+    title: 'Daily calendar',
+    intro:
+      'Look back on each day. Mark it blue when you met your goals, or red when you missed the goal you are tracking.',
+    monthSummary: '{done} blue · {missed} red',
+    previous: 'Previous month',
+    next: 'Next month',
+    today: 'Today',
+    future: 'Upcoming day',
+    done: 'Goals met',
+    missed: 'Goal missed',
+    unmarked: 'Unmarked',
+    selectDay: 'Choose a day',
+    selectHint: 'Select a past date in the calendar to mark it.',
+    note: 'Note (optional)',
+    noteHint: 'Which goal did you miss? What helped today?',
+    markDone: 'Mark blue',
+    markMissed: 'Mark red',
+    clear: 'Clear this day',
+    yesterdayRule: 'You can mark yesterday and earlier dates. Today opens for marking tomorrow.'
   },
   finance: {
     tabDashboard: 'Dashboard',
