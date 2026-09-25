@@ -84,20 +84,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
             {sectionGroup} / {activeLabel}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          {firstName && <span className="text-sm text-muted-foreground">{firstName}</span>}
-          {!dayViewOpen && (
-            <button
-              type="button"
-              title={t('workspace.openDayView')}
-              aria-label={t('workspace.openDayView')}
-              onClick={() => setDayViewOpen(true)}
-              className="hidden size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring xl:flex"
-            >
-              <PanelRightOpen className="size-4" />
-            </button>
-          )}
-        </div>
+        {firstName && <span className="text-sm text-muted-foreground">{firstName}</span>}
       </header>
 
       <div
@@ -229,6 +216,17 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
                 <CalendarDays className="size-4" />
                 {t('nav.calendar')}
               </NavLink>
+            )}
+            {!dayViewOpen && (
+              <button
+                type="button"
+                title={t('workspace.openDayView')}
+                aria-label={t('workspace.openDayView')}
+                onClick={() => setDayViewOpen(true)}
+                className="ml-auto mr-2 hidden size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring xl:flex"
+              >
+                <PanelRightOpen className="size-4" />
+              </button>
             )}
           </div>
           <div className="min-w-0 lg:mr-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
