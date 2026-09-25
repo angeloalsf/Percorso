@@ -66,6 +66,15 @@ export const ptBR: typeof en = {
     calendar: 'Calendário',
     settings: 'Ajustes'
   },
+  workspace: {
+    mainNavigation: 'Navegação principal',
+    explore: 'Explorar',
+    routine: 'Rotina',
+    dayView: 'Visão do dia',
+    daySubtitle: 'Um passo de cada vez.',
+    dashboardTitle: 'Seu painel financeiro',
+    dashboardIntro: 'Um olhar claro sobre o seu dinheiro e seus próximos passos.'
+  },
   settings: {
     title: 'Configurações',
     profile: 'Perfil',
