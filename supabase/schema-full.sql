@@ -12,7 +12,7 @@
 -- of the following, for EVERY user, with no confirmation and no undo:
 --
 --   profiles · accounts · categories · credit_cards
---   transactions · budgets · goals · bills · loans · consortiums
+--   transactions · budgets · goals · bills · loans · consortiums · calendar_days
 --
 -- That means every user's finance history, budgets, savings goals and bills —
 -- gone. NEVER run this against production, or against any database holding
@@ -100,6 +100,7 @@ drop trigger if exists on_auth_user_updated on auth.users;
 -- Tables, child-before-parent. `cascade` also removes each table's policies,
 -- triggers, indexes and any foreign keys pointing at it, so the order below is
 -- belt-and-braces rather than strictly required.
+drop table if exists public.calendar_days cascade;
 drop table if exists public.consortiums  cascade;
 drop table if exists public.loans        cascade;
 drop table if exists public.bills        cascade;
@@ -454,11 +455,23 @@ create table public.consortiums (
   constraint consortiums_paid_within_total check (installments_paid <= installments_total)
 );
 
+create table public.calendar_days (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  date       date not null,
+  status     text not null check (status in ('done', 'missed')),
+  note       text not null default '' check (char_length(note) <= 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, date)
+);
+
 -- ---------------------------------------------------------------------------
 -- RLS: each user sees only their own rows; admins may READ everyone's.
 -- Writes (insert/update/delete) always stay scoped to the owner.
 -- ---------------------------------------------------------------------------
 
+alter table public.calendar_days enable row level security;
 alter table public.accounts     enable row level security;
 alter table public.categories   enable row level security;
 alter table public.credit_cards enable row level security;
@@ -502,10 +515,22 @@ begin
 end;
 $$;
 
+create policy "calendar_days: select own" on public.calendar_days
+  for select using ((select auth.uid()) = user_id);
+create policy "calendar_days: insert own" on public.calendar_days
+  for insert with check ((select auth.uid()) = user_id);
+create policy "calendar_days: update own" on public.calendar_days
+  for update using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "calendar_days: delete own" on public.calendar_days
+  for delete using ((select auth.uid()) = user_id);
+create trigger calendar_days_updated_at before update on public.calendar_days
+  for each row execute function public.set_updated_at();
+
 -- ---------------------------------------------------------------------------
 -- indexes for the app's read patterns
 -- ---------------------------------------------------------------------------
 
+create index calendar_days_user_date_idx on public.calendar_days (user_id, date);
 create index accounts_user_idx        on public.accounts (user_id);
 create index categories_user_idx      on public.categories (user_id);
 create index credit_cards_user_idx    on public.credit_cards (user_id);
@@ -533,6 +558,7 @@ create index consortiums_account_idx  on public.consortiums (account_id);
 -- default. `anon` intentionally gets nothing.
 
 grant select, insert, update, delete on
+  public.calendar_days,
   public.accounts,
   public.categories,
   public.transactions,

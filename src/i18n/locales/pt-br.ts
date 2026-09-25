@@ -63,6 +63,7 @@ export const ptBR: typeof en = {
   },
   nav: {
     finances: 'Finanças',
+    calendar: 'Calendário',
     settings: 'Ajustes'
   },
   settings: {
@@ -80,6 +81,27 @@ export const ptBR: typeof en = {
     privacy: 'Privacidade e dados',
     privacyHint:
       'Seus dados ficam no seu banco Supabase privado, protegidos por Row Level Security. Só você pode lê-los.'
+  },
+  calendar: {
+    title: 'Calendário diário',
+    intro:
+      'Olhe para cada dia que passou. Pinte de azul quando cumpriu suas metas ou de vermelho quando falhou na meta que acompanha.',
+    monthSummary: '{done} azuis · {missed} vermelhos',
+    previous: 'Mês anterior',
+    next: 'Próximo mês',
+    today: 'Hoje',
+    future: 'Dia futuro',
+    done: 'Metas cumpridas',
+    missed: 'Meta não cumprida',
+    unmarked: 'Sem marcação',
+    selectDay: 'Escolha um dia',
+    selectHint: 'Selecione uma data anterior no calendário para pintá-la.',
+    note: 'Observação (opcional)',
+    noteHint: 'Qual meta não foi cumprida? O que ajudou hoje?',
+    markDone: 'Pintar de azul',
+    markMissed: 'Pintar de vermelho',
+    clear: 'Limpar este dia',
+    yesterdayRule: 'Você pode marcar ontem e os dias anteriores. O dia de hoje fica disponível amanhã.'
   },
   finance: {
     tabDashboard: 'Painel',

@@ -63,6 +63,7 @@ export const it: typeof en = {
   },
   nav: {
     finances: 'Finanze',
+    calendar: 'Calendario',
     settings: 'Impostazioni'
   },
   settings: {
@@ -80,6 +81,27 @@ export const it: typeof en = {
     privacy: 'Privacy e dati',
     privacyHint:
       'I tuoi dati vivono nel tuo database Supabase privato, protetti dalla Row Level Security. Solo tu puoi leggerli.'
+  },
+  calendar: {
+    title: 'Calendario quotidiano',
+    intro:
+      'Riguarda ogni giornata. Segna in blu quando hai raggiunto i tuoi obiettivi, oppure in rosso quando non hai raggiunto quello che stai seguendo.',
+    monthSummary: '{done} blu · {missed} rossi',
+    previous: 'Mese precedente',
+    next: 'Mese successivo',
+    today: 'Oggi',
+    future: 'Giorno futuro',
+    done: 'Obiettivi raggiunti',
+    missed: 'Obiettivo mancato',
+    unmarked: 'Senza segno',
+    selectDay: 'Scegli un giorno',
+    selectHint: 'Seleziona una data passata nel calendario per segnarla.',
+    note: 'Nota (facoltativa)',
+    noteHint: 'Quale obiettivo hai mancato? Che cosa ti ha aiutato oggi?',
+    markDone: 'Segna in blu',
+    markMissed: 'Segna in rosso',
+    clear: 'Cancella questo giorno',
+    yesterdayRule: 'Puoi segnare ieri e i giorni precedenti. Oggi sarà disponibile domani.'
   },
   finance: {
     tabDashboard: 'Cruscotto',

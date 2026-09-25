@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { Navigate, NavLink, Outlet } from 'react-router-dom'
-import { CircleAlert, Settings, Wallet } from 'lucide-react'
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { CalendarDays, CircleAlert, Settings, Wallet } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { EnvBanner } from '@/app/EnvBanner'
 import { Button } from '@/components/ui/button'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Splash } from '@/components/ui/splash'
+import { useCalendarStore } from '@/features/calendar/store'
 import { useFinanceStore } from '@/features/finance/store'
 import { useT, type TKey } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -13,6 +14,7 @@ import { useProfile } from '@/state/profile'
 
 const NAV: { to: string; icon: typeof Wallet; labelKey: TKey }[] = [
   { to: '/finances', icon: Wallet, labelKey: 'nav.finances' },
+  { to: '/calendar', icon: CalendarDays, labelKey: 'nav.calendar' },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ]
 
@@ -26,12 +28,13 @@ export function AppLayout() {
 
 function Shell({ userId }: { userId: string }) {
   const t = useT()
+  const { pathname } = useLocation()
+  const inFinances = pathname.startsWith('/finances')
   const financeStatus = useFinanceStore((s) => s.status)
   const fullName = useProfile((s) => s.fullName)
   const firstName = fullName.trim().split(/\s+/)[0]
 
   useEffect(() => {
-    void useFinanceStore.getState().load()
     useProfile
       .getState()
       .load(userId)
@@ -40,12 +43,17 @@ function Shell({ userId }: { userId: string }) {
       })
     return () => {
       useFinanceStore.getState().reset()
+      useCalendarStore.getState().reset()
       useProfile.getState().reset()
     }
   }, [userId])
 
-  const failed = financeStatus === 'error'
-  const ready = financeStatus === 'ready'
+  useEffect(() => {
+    if (inFinances) void useFinanceStore.getState().load()
+  }, [inFinances, userId])
+
+  const failed = inFinances && financeStatus === 'error'
+  const ready = !inFinances || financeStatus === 'ready'
 
   const retry = (): void => {
     useFinanceStore.getState().reset()
@@ -78,7 +86,7 @@ function Shell({ userId }: { userId: string }) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm">
-        <div className="mx-auto grid max-w-md grid-cols-2">
+        <div className="mx-auto grid max-w-md grid-cols-3">
           {NAV.map(({ to, icon: Icon, labelKey }) => (
             <NavLink
               key={to}
