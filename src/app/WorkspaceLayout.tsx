@@ -78,12 +78,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
   return (
     <div className="min-h-dvh lg:flex lg:h-dvh lg:flex-col lg:gap-[3px] lg:overflow-hidden lg:p-[3px]">
       <header className="hidden h-12 shrink-0 items-center justify-between px-3 lg:flex">
-        <div className="flex items-center gap-5">
-          <span className="text-sm font-bold tracking-wide">Percorso</span>
-          <span className="text-xs text-muted-foreground">
-            {sectionGroup} / {activeLabel}
-          </span>
-        </div>
+        <span className="text-sm font-bold tracking-wide">Percorso</span>
         {firstName && <span className="text-sm text-muted-foreground">{firstName}</span>}
       </header>
 
@@ -104,54 +99,48 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
           className="hidden min-h-0 flex-col items-center gap-2 rounded-lg border bg-card py-3 lg:flex"
           aria-label={t('workspace.mainNavigation')}
         >
-          {[
-            {
-              label: t('nav.finances'),
-              icon: Wallet,
-              active: inFinances && section !== 'goals',
-              action: () => navigate('/finances')
-            },
-            {
-              label: t('nav.calendar'),
-              icon: CalendarDays,
-              active: pathname === '/calendar',
-              action: () => navigate('/calendar')
-            },
-            {
-              label: t('finance.tabGoals'),
-              icon: Target,
-              active: inFinances && section === 'goals',
-              action: () => openFinance('goals')
-            }
-          ].map(({ label, icon: Icon, active, action }) => (
-            <button
-              key={label}
-              type="button"
-              title={label}
-              aria-label={label}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => handleRailAction(active, action)}
-              className={cn(
-                'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-                active ? 'bg-accent text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <Icon className="size-5" />
-            </button>
-          ))}
           <button
             type="button"
-            title={t('nav.settings')}
-            aria-label={t('nav.settings')}
-            aria-current={pathname === '/settings' ? 'page' : undefined}
-            onClick={() => handleRailAction(pathname === '/settings', () => navigate('/settings'))}
+            title={t('nav.finances')}
+            aria-label={t('nav.finances')}
+            aria-current={inFinances ? 'page' : undefined}
+            onClick={() => handleRailAction(inFinances, () => navigate('/finances'))}
             className={cn(
-              'mt-auto flex size-10 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-              pathname === '/settings' ? 'bg-accent text-primary' : 'text-muted-foreground'
+              'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+              inFinances ? 'bg-accent text-primary' : 'text-muted-foreground'
             )}
           >
-            <Settings className="size-5" />
+            <Wallet className="size-5" />
           </button>
+          <div className="mt-auto flex w-full flex-col items-center gap-2 px-2">
+            <button
+              type="button"
+              title={t('nav.calendar')}
+              aria-label={t('nav.calendar')}
+              aria-current={pathname === '/calendar' ? 'page' : undefined}
+              onClick={() => handleRailAction(pathname === '/calendar', () => navigate('/calendar'))}
+              className={cn(
+                'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+                pathname === '/calendar' ? 'bg-accent text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <CalendarDays className="size-5" />
+            </button>
+            <div className="w-full border-t" aria-hidden="true" />
+            <button
+              type="button"
+              title={t('nav.settings')}
+              aria-label={t('nav.settings')}
+              aria-current={pathname === '/settings' ? 'page' : undefined}
+              onClick={() => handleRailAction(pathname === '/settings', () => navigate('/settings'))}
+              className={cn(
+                'flex size-10 items-center justify-center rounded-md hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+                pathname === '/settings' ? 'bg-accent text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <Settings className="size-5" />
+            </button>
+          </div>
         </nav>
 
         {explorerOpen && (
@@ -183,22 +172,6 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
                 </button>
               ))}
             </nav>
-            <div className="my-4 border-t" />
-            <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {t('workspace.routine')}
-            </p>
-            <NavLink
-              to="/calendar"
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-                  isActive ? 'bg-accent font-medium text-primary' : 'text-muted-foreground'
-                )
-              }
-            >
-              <CalendarDays className="size-4" />
-              {t('calendar.title')}
-            </NavLink>
           </aside>
         )}
 
@@ -208,15 +181,6 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
               <CurrentIcon className="size-4 text-primary" />
               {activeLabel}
             </span>
-            {pathname !== '/calendar' && (
-              <NavLink
-                to="/calendar"
-                className="flex h-full items-center gap-2 border-r px-4 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <CalendarDays className="size-4" />
-                {t('nav.calendar')}
-              </NavLink>
-            )}
             {!dayViewOpen && (
               <button
                 type="button"
