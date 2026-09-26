@@ -49,7 +49,7 @@
     "@axe-core/react": "^4.12.1",
     "@eslint/js": "^10.0.1",
     "@lhci/cli": "^0.15.1",
-    "@playwright/test": "^1.62.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
