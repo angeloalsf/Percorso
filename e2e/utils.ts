@@ -12,6 +12,11 @@ export async function login(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/finances/)
 }
 
+/** Desktop finance navigation lives in the Explore pane. */
+export async function openFinanceSection(page: Page, name: string): Promise<void> {
+  await page.getByRole('navigation', { name: 'Finances' }).getByRole('button', { name }).click()
+}
+
 /** Strips an Intl.NumberFormat currency string (e.g. "$1,234.56") down to a number. */
 export function parseMoney(text: string): number {
   return parseFloat(text.replace(/[^0-9.-]/g, ''))

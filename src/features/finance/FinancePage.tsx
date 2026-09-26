@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@/i18n'
 import { Accounts } from './sections/Accounts'
@@ -13,31 +14,41 @@ import { useFinanceStore } from './store'
 
 export function FinancePage() {
   const t = useT()
-  const [tab, setTab] = useState('dashboard')
+  const { financeTab: tab, setFinanceTab: setTab } = useOutletContext<{
+    financeTab: string
+    setFinanceTab: (section: string) => void
+  }>()
   const pendingTxFilter = useFinanceStore((s) => s.pendingTxFilter)
 
   // A dashboard chart drill-down asks to jump to the Transactions tab.
-  // TODO: derive `tab` from `pendingTxFilter` during render instead of
-  // syncing via effect (react-hooks/set-state-in-effect) — deferred, needs
-  // its own reviewed change since it touches the drill-down flow's behavior.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (pendingTxFilter) setTab('transactions')
-  }, [pendingTxFilter])
+  }, [pendingTxFilter, setTab])
 
   return (
     <div>
+      {tab === 'dashboard' && (
+        <div className="mb-5 hidden lg:block">
+          <p className="mb-1 text-xs font-semibold tracking-wider text-primary uppercase">
+            Percorso / {t('nav.finances')}
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('workspace.dashboardTitle')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('workspace.dashboardIntro')}</p>
+        </div>
+      )}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="dashboard">{t('finance.tabDashboard')}</TabsTrigger>
-          <TabsTrigger value="transactions">{t('finance.tabTransactions')}</TabsTrigger>
-          <TabsTrigger value="accounts">{t('finance.tabAccounts')}</TabsTrigger>
-          <TabsTrigger value="cards">{t('finance.tabCards')}</TabsTrigger>
-          <TabsTrigger value="budgets">{t('finance.tabBudgets')}</TabsTrigger>
-          <TabsTrigger value="goals">{t('finance.tabGoals')}</TabsTrigger>
-          <TabsTrigger value="bills">{t('finance.tabBills')}</TabsTrigger>
-          <TabsTrigger value="categories">{t('finance.tabCategories')}</TabsTrigger>
-        </TabsList>
+        <div className="lg:hidden">
+          <TabsList>
+            <TabsTrigger value="dashboard">{t('finance.tabDashboard')}</TabsTrigger>
+            <TabsTrigger value="transactions">{t('finance.tabTransactions')}</TabsTrigger>
+            <TabsTrigger value="accounts">{t('finance.tabAccounts')}</TabsTrigger>
+            <TabsTrigger value="cards">{t('finance.tabCards')}</TabsTrigger>
+            <TabsTrigger value="budgets">{t('finance.tabBudgets')}</TabsTrigger>
+            <TabsTrigger value="goals">{t('finance.tabGoals')}</TabsTrigger>
+            <TabsTrigger value="bills">{t('finance.tabBills')}</TabsTrigger>
+            <TabsTrigger value="categories">{t('finance.tabCategories')}</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="dashboard">
           <Dashboard />
         </TabsContent>

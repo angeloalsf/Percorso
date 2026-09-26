@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { login, parseMoney } from './utils'
+import { login, openFinanceSection, parseMoney } from './utils'
 
 test('adding an expense reduces net worth by the transaction amount', async ({ page }) => {
   await login(page)
@@ -12,7 +12,7 @@ test('adding an expense reduces net worth by the transaction amount', async ({ p
 
   const before = await netWorth()
 
-  await page.getByRole('tab', { name: 'Transactions' }).click()
+  await openFinanceSection(page, 'Transactions')
   await page.getByRole('button', { name: 'Add transaction' }).click()
 
   // Defaults to type "expense", paid from the first bank account — a bank-paid
@@ -22,6 +22,6 @@ test('adding an expense reduces net worth by the transaction amount', async ({ p
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Added', { exact: true })).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Dashboard' }).click()
+  await openFinanceSection(page, 'Dashboard')
   await expect.poll(netWorth).toBeCloseTo(before - amount, 2)
 })

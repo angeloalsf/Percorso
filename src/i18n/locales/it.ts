@@ -66,6 +66,17 @@ export const it: typeof en = {
     calendar: 'Calendario',
     settings: 'Impostazioni'
   },
+  workspace: {
+    mainNavigation: 'Navigazione principale',
+    explore: 'Esplora',
+    routine: 'Abitudini',
+    dayView: 'Vista del giorno',
+    openDayView: 'Apri vista del giorno',
+    closeDayView: 'Chiudi vista del giorno',
+    daySubtitle: 'Un passo alla volta.',
+    dashboardTitle: 'Il tuo quadro finanziario',
+    dashboardIntro: 'Una visione chiara del tuo denaro e dei prossimi passi.'
+  },
   settings: {
     title: 'Impostazioni',
     profile: 'Profilo',

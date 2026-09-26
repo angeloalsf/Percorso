@@ -1,22 +1,15 @@
-import { useEffect } from 'react'
-import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, CircleAlert, Settings, Wallet } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { CircleAlert } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
-import { EnvBanner } from '@/app/EnvBanner'
+import { WorkspaceLayout } from '@/app/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Splash } from '@/components/ui/splash'
 import { useCalendarStore } from '@/features/calendar/store'
 import { useFinanceStore } from '@/features/finance/store'
-import { useT, type TKey } from '@/i18n'
-import { cn } from '@/lib/utils'
+import { useT } from '@/i18n'
 import { useProfile } from '@/state/profile'
-
-const NAV: { to: string; icon: typeof Wallet; labelKey: TKey }[] = [
-  { to: '/finances', icon: Wallet, labelKey: 'nav.finances' },
-  { to: '/calendar', icon: CalendarDays, labelKey: 'nav.calendar' },
-  { to: '/settings', icon: Settings, labelKey: 'nav.settings' }
-]
 
 /** Protected shell: session gate → data gate → nav + page content. */
 export function AppLayout() {
@@ -29,6 +22,8 @@ export function AppLayout() {
 function Shell({ userId }: { userId: string }) {
   const t = useT()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const [financeTab, setFinanceTab] = useState('dashboard')
   const inFinances = pathname.startsWith('/finances')
   const financeStatus = useFinanceStore((s) => s.status)
   const fullName = useProfile((s) => s.fullName)
@@ -60,50 +55,26 @@ function Shell({ userId }: { userId: string }) {
     void useFinanceStore.getState().load()
   }
 
-  return (
-    <div className="min-h-dvh">
-      <EnvBanner />
-      <main className="min-w-0">
-        <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8">
-          <header className="mb-5 flex items-center justify-between gap-3 md:mb-6">
-            <span className="text-sm font-bold tracking-wide text-foreground">Percorso</span>
-            {firstName ? <span className="text-sm font-light text-muted-foreground">{firstName}</span> : null}
-          </header>
-          {failed ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-12 text-center">
-              <CircleAlert className="size-7 text-destructive" />
-              <p className="text-sm text-muted-foreground">{t('errors.loadFailed')}</p>
-              <Button variant="secondary" onClick={retry}>
-                {t('common.retry')}
-              </Button>
-            </div>
-          ) : ready ? (
-            <Outlet />
-          ) : (
-            <PageSkeleton />
-          )}
-        </div>
-      </main>
+  const openFinance = (section: string): void => {
+    setFinanceTab(section)
+    navigate('/finances')
+  }
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm">
-        <div className="mx-auto grid max-w-md grid-cols-3">
-          {NAV.map(({ to, icon: Icon, labelKey }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center gap-0.5 py-2 pt-2.5 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                )
-              }
-            >
-              <Icon className="size-5" />
-              {t(labelKey)}
-            </NavLink>
-          ))}
+  return (
+    <WorkspaceLayout userId={userId} firstName={firstName} financeTab={financeTab} openFinance={openFinance}>
+      {failed ? (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-12 text-center">
+          <CircleAlert className="size-7 text-destructive" />
+          <p className="text-sm text-muted-foreground">{t('errors.loadFailed')}</p>
+          <Button variant="secondary" onClick={retry}>
+            {t('common.retry')}
+          </Button>
         </div>
-      </nav>
-    </div>
+      ) : ready ? (
+        <Outlet context={{ financeTab, setFinanceTab }} />
+      ) : (
+        <PageSkeleton />
+      )}
+    </WorkspaceLayout>
   )
 }
