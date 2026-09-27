@@ -1,6 +1,7 @@
 # CLAUDE.md — Percorso project context
 
-Percorso is a **mobile-first web app** (React SPA) with a single module — **Finances** — backed by **Supabase** (Postgres + Auth) with per-user Row Level Security. It was migrated from a local-only Electron desktop app; the Electron version's history is preserved on `main` before this branch. (An earlier cut of this migration also shipped a People module; it was removed — scope is Finances only.)
+Percorso is a personal workspace (React SPA) with Home, Finances, Calendar and Settings, backed by Supabase (Postgres + Auth). Finance rows are protected by per-user RLS; normal app queries also filter by the current `user_id`, including for admins.
+
 
 ## Commands
 
@@ -25,7 +26,7 @@ Environment: copy `.env.example` → `.env` with `VITE_SUPABASE_URL` + `VITE_SUP
 supabase/
 ├── migrations/          # schema + RLS; apply via dashboard SQL editor or `supabase db push`
 ├── schema-full.sql      # consolidated snapshot of the CURRENT schema (never applied; see below)
-├── seed/                # admin user, test-login + demo finance data, production-safe demo data
+├── seed/                # local users, destructive demo data for a disposable user, QA persona
 └── tests/               # pgTAP RLS isolation tests, run via `supabase test db`
 src/
 ├── main.tsx             # initTheme() → render <App> (StrictMode)
@@ -72,9 +73,7 @@ When a feature is "done", check it against this: _is every number here computed 
 - An `accounts` row is money you **hold** — `checking | savings | cash | investment`. Anything you **owe or subscribe to** is a separate table linked by an account id that is **display/grouping only** and never dictates which account pays: `credit_cards.issuing_account_id`, `loans.account_id`, `consortiums.account_id`. Two account types were removed as this became clear: `'card'` (credit-cards migration) and `'consorcio'` (loans/consortiums migration, which also converts any leftover consórcio account into a `consortiums` row).
 - The Contas bancárias tab is a **three-level drill-down**, and levels 2 and 3 are real routes so they deep-link and work with browser back: list (`sections/Accounts`) → `/finances/accounts/:accountId` (`accounts/AccountDetailPage`, sub-tabs Cartões · Empréstimos · Consórcios) → `/finances/accounts/:accountId/:kind/:itemId` (`accounts/AccountItemPage`). The other Finance tabs remain local `useState`, not routes. Both pages `<Navigate>` up a level when the id no longer resolves.
 - The top-level Cartões tab stays the flat all-cards list and is where cards are **created** (it also holds cards with no issuing account); the account's Cartões sub-tab only lists that account's cards. Loans and consórcios are created from within the account, since that is their only home.
-- **`loans` / `consortiums` are an intentionally minimal v1**: list/CRUD only, with none of the credit-card machinery (no bill generation into `bills`, no payment linking). Progress follows the derived-value rule above: `(installments_paid, paid_as_of)` is the user-owned **input** — the count that was true on that date — and `store.installmentsPaidNow()` derives today's count from it by rolling forward one per `due_day` elapsed, exactly as `accountBalance` derives from `initial_balance`. Nothing writes a progress number back. Replace that derivation first if real payment tracking is added.
-
-### Auth & session
+- **Loans and consórcios**: `installments_paid` is confirmed progress; due dates never increase it automatically. The account item page records a payment through `pay_plan_installment`, atomically adding a bank expense and incrementing the count. `paid_as_of` is the last confirmed payment date. Form fields can still establish the historical baseline.
 
 - `AuthProvider` wraps the app: `getSession()` + `onAuthStateChange`. `AuthGate` bounces signed-in users off /login·/signup; `AppLayout` bounces signed-out users to /login.
 - `supabase.ts` sets `persistSession: true` + `autoRefreshToken: true`: the session (refresh token) survives reloads/restarts in localStorage, and the ~1h access token is refreshed silently in the background. Real session length is governed by the refresh-token lifetime, set in the Supabase dashboard (Auth → Sessions / JWT expiry) — see README.
@@ -92,7 +91,7 @@ Every schema change (new table, new column, new constraint …) ships **three th
 
 1. **A new migration** under `supabase/migrations/`. Append-only — never edit a file already applied to a shared DB. This stays the source of truth for how the schema evolved and how to apply it incrementally (`supabase db push` / `db reset` read this directory _only_).
 2. **Updated seed data** — `supabase/seed/test-data.sql` **and** `supabase/seed/demo-data.sql`. A new feature never ships with empty seed data: after a fresh `supabase db reset` (or running the demo script), its screen must already be populated and testable. If the change alters existing columns, make sure the seeds still satisfy the new constraints — e.g. dropping `accounts.type = 'card'` meant reseeding cards into `credit_cards`.
-3. **Updated `supabase/schema-full.sql`** — one file holding the complete current CREATE-everything SQL (every table, RLS policy, function, trigger, grant, index), equivalent to concatenating every migration in order. It is a **convenience snapshot, never applied** to a database that has migrations; it exists so the whole schema can be read or recreated at a glance. It is idempotent — it `drop table … cascade`s everything first — which also makes it **destructive**: running it wipes every table it defines, so it is for local/throwaway databases only. `auth.users` is not dropped, but every `profiles` row and all finance data is.
+3. **Updated `supabase/schema-full.sql`** — one file holding a full rebuild of the current schema (every table, RLS policy, function, trigger, grant, index), equivalent to concatenating every migration in order. It is a **convenience snapshot, never applied** to a database that has migrations; it exists so the whole schema can be read or recreated at a glance. It is idempotent — it `drop table … cascade`s everything first — which also makes it **destructive**: running it wipes every table it defines, so it is for local/throwaway databases only. `auth.users` is not dropped, but every `profiles` row and all finance data is.
 
 To verify #3 after editing: apply `migrations/*.sql` in order to one scratch database and `schema-full.sql` to another, then `pg_dump --schema-only --schema=public --no-owner` both and diff — they must be identical, column order included. (New columns therefore go at the **end** of the table in the snapshot, matching where `alter table … add column` put them.)
 
@@ -100,7 +99,8 @@ To verify #3 after editing: apply `migrations/*.sql` in order to one scratch dat
 
 - `supabase/seed/admin.sql` — **local/test only.** Provisions the admin user (auth.users + identity via pgcrypto, `is_admin = true`).
 - `supabase/seed/test-data.sql` — **local/test only.** Provisions `test@percorso.local` + a full realistic finance dataset (accounts, categories, credit card, months of bank _and_ card transactions, budgets, goals, bills) to populate every Finance screen for visual QA.
-- `supabase/seed/demo-data.sql` — **production-safe.** Same dataset for an **existing** user id, and creates no `auth.users` row, so it can be pasted into the Dashboard SQL editor of a real project. Not in `config.toml`'s `sql_paths` — it is run by hand.
+- `supabase/seed/qa-persona.sql` — six months of representative Finance data for a newly created test login; requires a UUID replacement and refuses to overwrite existing finance data. Do not commit the password.
+- `supabase/seed/demo-data.sql` — **scoped to the specified user but destructive for that user.** Same dataset for an **existing** user id, and creates no `auth.users` row, so it can be pasted into the Dashboard SQL editor of a real project. Not in `config.toml`'s `sql_paths` — it is run by hand.
 - The first two create real `auth.users` rows with bcrypt passwords, which only works running as the postgres/superuser role (local `supabase db reset`, or the dashboard SQL editor on a throwaway project). Seed inserts set `user_id` explicitly because `auth.uid()` is NULL outside a request context.
 - All three are idempotent: re-running deletes and recreates that user's rows, in FK-`restrict`-safe order (transactions → budgets → goals → bills → credit_cards → accounts → categories).
 

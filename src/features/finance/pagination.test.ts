@@ -12,15 +12,18 @@ interface MockResult {
   error: unknown
 }
 
-const { mock } = vi.hoisted(() => ({ mock: { transactions: [] as unknown[] } }))
+const { mock } = vi.hoisted(() => ({ mock: { transactions: [] as unknown[], filters: [] as string[] } }))
 
-function chainable(result: MockResult) {
+function chainable(table: string, result: MockResult) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const builder: any = {}
   const self = () => builder
   builder.select = self
   builder.order = self
-  builder.eq = self
+  builder.eq = (column: string, value: string) => {
+    mock.filters.push(`${table}.${column}=${value}`)
+    return builder
+  }
   builder.range = (from: number, to: number) => {
     if (!result.data) return Promise.resolve(result)
     return Promise.resolve({ data: result.data.slice(from, to + 1), error: null })
@@ -34,10 +37,11 @@ function chainable(result: MockResult) {
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: { getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }) },
     from: (table: string) =>
       table === 'transactions'
-        ? chainable({ data: mock.transactions, error: null })
-        : chainable({ data: [], error: null })
+        ? chainable(table, { data: mock.transactions, error: null })
+        : chainable(table, { data: [], error: null })
   },
   supabaseConfigured: true
 }))
@@ -63,6 +67,7 @@ describe('load() transaction pagination (ARCH-1)', () => {
   beforeEach(() => {
     useFinanceStore.getState().reset()
     mock.transactions = []
+    mock.filters = []
   })
 
   it('pages past the 1000-row PostgREST cap and returns all 1500 rows', async () => {
@@ -76,6 +81,26 @@ describe('load() transaction pagination (ARCH-1)', () => {
     mock.transactions = Array.from({ length: 250 }, (_, i) => transactionRow(i))
     await useFinanceStore.getState().load()
     expect(useFinanceStore.getState().transactions).toHaveLength(250)
+  })
+
+  it('scopes every table to the signed-in user, including an admin session', async () => {
+    await useFinanceStore.getState().load()
+    expect(new Set(mock.filters)).toEqual(
+      new Set(
+        [
+          'accounts',
+          'categories',
+          'transactions',
+          'budgets',
+          'budget_limit_history',
+          'goals',
+          'bills',
+          'credit_cards',
+          'loans',
+          'consortiums'
+        ].map((table) => `${table}.user_id=test-user`)
+      )
+    )
   })
 
   it('pages correctly when the count lands exactly on a page boundary', async () => {

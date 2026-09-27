@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Field } from '@/components/ui/field'
+import { Select } from '@/components/ui/select'
 import { ColorDot } from '@/components/ui/list'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { useLang, useT } from '@/i18n'
@@ -19,6 +22,7 @@ import {
   nextCardDue,
   planNextDue,
   planRemaining,
+  payPlanInstallment,
   useFinanceStore,
   type Consortium,
   type Loan
@@ -116,7 +120,7 @@ export function AccountItemPage() {
         </Card>
       )}
 
-      {plan && <PlanDetail plan={plan} money={money} />}
+      {plan && <PlanDetail plan={plan} kind={loan ? 'loan' : 'consortium'} money={money} />}
 
       {editing && loan && <LoanForm accountId={account.id} loan={loan} onClose={() => setEditing(false)} />}
       {editing && consortium && (
@@ -134,31 +138,95 @@ export function AccountItemPage() {
   )
 }
 
-function PlanDetail({ plan, money }: { plan: Loan | Consortium; money: (v: number) => string }) {
+function PlanDetail({
+  plan,
+  kind,
+  money
+}: {
+  plan: Loan | Consortium
+  kind: 'loan' | 'consortium'
+  money: (v: number) => string
+}) {
   const t = useT()
   const lang = useLang()
+  const accounts = useFinanceStore((s) => s.accounts).filter((a) => !a.archived)
+  const [paying, setPaying] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
+  const [paymentKey, setPaymentKey] = useState(() => crypto.randomUUID())
   const paid = installmentsPaidNow(plan)
   const nextDue = planNextDue(plan)
+  const confirm = async (): Promise<void> => {
+    if (!accountId) return
+    setSubmitting(true)
+    const result = await payPlanInstallment(kind, plan.id, accountId, paymentKey)
+    setSubmitting(false)
+    if (result === 'ok') {
+      setPaying(false)
+      setPaymentKey(crypto.randomUUID())
+      toast.success(t('toasts.updated'))
+    } else toast.error(t('toasts.saveError'))
+  }
 
   return (
-    <Card className="p-4">
-      <p className="text-xs text-muted-foreground">{t('finance.installmentAmount')}</p>
-      <p className="tabular mt-1 text-2xl font-semibold">{money(plan.installmentAmount)}</p>
+    <>
+      <Card className="p-4">
+        <p className="text-xs text-muted-foreground">{t('finance.installmentAmount')}</p>
+        <p className="tabular mt-1 text-2xl font-semibold">{money(plan.installmentAmount)}</p>
 
-      <p className="mt-4 text-sm font-medium">
-        {t('finance.installmentProgress', { paid: String(paid), total: String(plan.installmentsTotal) })}
-      </p>
-      <ProgressBar className="mt-2" value={paid} max={plan.installmentsTotal} />
+        <p className="mt-4 text-sm font-medium">
+          {t('finance.installmentProgress', { paid: String(paid), total: String(plan.installmentsTotal) })}
+        </p>
+        <ProgressBar className="mt-2" value={paid} max={plan.installmentsTotal} />
 
-      <p className="mt-3 text-sm text-muted-foreground">
-        {t('finance.remainingAmount', { amount: money(planRemaining(plan)) })}
-      </p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {nextDue ? t('finance.nextInstallment', { date: formatDate(nextDue, lang, 'medium') }) : t('finance.fullyPaid')}
-      </p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {t('finance.totalAmount')}: {money(plan.totalAmount)}
-      </p>
-    </Card>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {t('finance.remainingAmount', { amount: money(planRemaining(plan)) })}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {nextDue
+            ? t('finance.nextInstallment', { date: formatDate(nextDue, lang, 'medium') })
+            : t('finance.fullyPaid')}
+        </p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          {t('finance.totalAmount')}: {money(plan.totalAmount)}
+        </p>
+        {paid < plan.installmentsTotal && (
+          <Button className="mt-4" size="sm" disabled={!accounts.length} onClick={() => setPaying(true)}>
+            {t('finance.payInstallment')}
+          </Button>
+        )}
+      </Card>
+      {paying && (
+        <Dialog open onOpenChange={(open) => !open && setPaying(false)}>
+          <DialogContent closeLabel={t('common.close')}>
+            <DialogHeader>
+              <DialogTitle>{t('finance.payInstallment')}</DialogTitle>
+            </DialogHeader>
+            <DialogBody>
+              <p className="mb-3 text-sm">
+                {plan.name} · {money(plan.installmentAmount)}
+              </p>
+              <Field label={t('finance.payFromAccount')}>
+                <Select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </DialogBody>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setPaying(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button disabled={submitting || !accountId} onClick={() => void confirm()}>
+                {t('finance.payInstallment')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }

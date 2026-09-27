@@ -24,15 +24,19 @@ import type { FinanceState } from './types'
 // ordering across separate `.range()` calls, which could skip or duplicate a
 // row at a page boundary.
 const TRANSACTIONS_PAGE_SIZE = 1000
+let loadGeneration = 0
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-async function fetchAllTransactions(): Promise<{ data: any[]; error: null } | { data: null; error: PostgrestError }> {
+async function fetchAllTransactions(
+  userId: string
+): Promise<{ data: any[]; error: null } | { data: null; error: PostgrestError }> {
   const rows: any[] = []
   let from = 0
   while (true) {
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
+      .eq('user_id', userId)
       .order('date')
       .order('created_at')
       .order('id')
@@ -51,6 +55,7 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   categories: [],
   transactions: [],
   budgets: [],
+  budgetHistory: [],
   goals: [],
   bills: [],
   creditCards: [],
@@ -60,23 +65,38 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
 
   load: async () => {
     if (get().status === 'loading' || get().status === 'ready') return
+    const generation = ++loadGeneration
     set({ status: 'loading' })
-    const [accounts, categories, transactions, budgets, goals, bills, cards, loans, consortiums] = await Promise.all([
-      supabase.from('accounts').select('*').order('created_at'),
-      supabase.from('categories').select('*').order('created_at'),
-      fetchAllTransactions(),
-      supabase.from('budgets').select('*').order('created_at'),
-      supabase.from('goals').select('*').order('created_at'),
-      supabase.from('bills').select('*').order('due_date'),
-      supabase.from('credit_cards').select('*').order('created_at'),
-      supabase.from('loans').select('*').order('created_at'),
-      supabase.from('consortiums').select('*').order('created_at')
-    ])
+    const {
+      data: { user },
+      error: authError
+    } = await supabase.auth.getUser()
+    if (generation !== loadGeneration) return
+    if (authError || !user) {
+      set({ status: 'error' })
+      return
+    }
+    const userId = user.id
+    const [accounts, categories, transactions, budgets, history, goals, bills, cards, loans, consortiums] =
+      await Promise.all([
+        supabase.from('accounts').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('categories').select('*').eq('user_id', userId).order('created_at'),
+        fetchAllTransactions(userId),
+        supabase.from('budgets').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('budget_limit_history').select('*').eq('user_id', userId),
+        supabase.from('goals').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('bills').select('*').eq('user_id', userId).order('due_date'),
+        supabase.from('credit_cards').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('loans').select('*').eq('user_id', userId).order('created_at'),
+        supabase.from('consortiums').select('*').eq('user_id', userId).order('created_at')
+      ])
+    if (generation !== loadGeneration) return
     if (
       accounts.error ||
       categories.error ||
       transactions.error ||
       budgets.error ||
+      history.error ||
       goals.error ||
       bills.error ||
       cards.error ||
@@ -89,19 +109,25 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     const creditCards = cards.data.map(rowToCreditCard)
     const txs = transactions.data.map(rowToTransaction)
     let billList = bills.data.map(rowToBill)
-    // Re-derive card invoice bills from the cycle's transactions (no background
-    // job infrastructure in this project, so it happens on load).
+    // Reconcile past card cycles on load; mutations reconcile immediately too.
     try {
       billList = await syncCardBills(creditCards, txs, billList)
     } catch {
       /* best-effort; a bill-sync failure must not block the dashboard */
     }
+    if (generation !== loadGeneration) return // logout/reset while queries were in flight
     set({
       status: 'ready',
       accounts: accounts.data.map(rowToAccount),
       categories: categories.data.map(rowToCategory),
       transactions: txs,
       budgets: budgets.data.map(rowToBudget),
+      budgetHistory: history.data.map((r) => ({
+        categoryId: r.category_id,
+        monthlyLimit: Number(r.monthly_limit),
+        validFrom: r.valid_from,
+        validUntil: r.valid_until
+      })),
       goals: goals.data.map(rowToGoal),
       bills: billList,
       creditCards,
@@ -110,20 +136,23 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
     })
   },
 
-  reset: () =>
+  reset: () => {
+    loadGeneration++
     set({
       status: 'idle',
       accounts: [],
       categories: [],
       transactions: [],
       budgets: [],
+      budgetHistory: [],
       goals: [],
       bills: [],
       creditCards: [],
       loans: [],
       consortiums: [],
       pendingTxFilter: null
-    }),
+    })
+  },
 
   setPendingTxFilter: (filter) => set({ pendingTxFilter: filter })
 }))

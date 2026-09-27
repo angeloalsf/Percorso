@@ -1,102 +1,55 @@
--- ============================================================================
--- Percorso — DEMO DATA for an EXISTING user  ·  v3 (credit cards)
--- ============================================================================
--- Unlike supabase/seed/test-data.sql, this script does NOT create an
--- auth.users / auth.identities row. It assumes the account already exists
--- (created through the app's real signup flow) and only populates data for
--- it. Safe to run against a real/production database via the Supabase
--- Dashboard SQL Editor.
---
--- Covers every table the app reads: accounts, categories, credit_cards, loans,
--- consortiums, transactions (bank + card purchases, incl. is_recurring flags),
--- budgets, goals, and bills.
---
--- Before running: edit the `uid` constant below to the target account's id
--- (Dashboard → Authentication → Users).
---
--- Dates are generated relative to CURRENT_DATE so the dashboard's current
--- month, trends, projections, card cycles and due-date alerts are always
--- populated.
---
--- Re-running this script is safe: it deletes and recreates this user's data
--- (accounts/categories/cards/transactions/budgets/goals/bills) each time,
--- without touching the auth account or profile row itself.
---
--- KEEP IT UP TO DATE: every schema change updates this script AND
--- supabase/seed/test-data.sql in the same change. See CLAUDE.md → "Schema
--- changes".
--- ============================================================================
-
--- Opt-in guard: uncomment the `set` line below to let this script run — a
--- last line of defense against running it for the wrong user_id / wrong
--- project. Wrapped in an explicit transaction because psql (and some SQL
--- editors) keep running statements after an error by default: once the guard
--- raises, every later statement in the same transaction fails too, so
--- nothing partially applies.
-
-begin;
-
--- set percorso.allow_destructive = 'yes';
-
-do $$
-begin
-  if current_setting('percorso.allow_destructive', true) is distinct from 'yes' then
-    raise exception 'Refusing to run: this script is destructive. Uncomment the `set percorso.allow_destructive` line above to proceed.';
-  end if;
-end $$;
+-- Six months of ordinary personal finance data for a freshly created test account.
+-- Replace {{QA_USER_ID}} with the Auth user's UUID. Refuses to overwrite data.
+-- Passwords are never stored in this file.
 
 do $$
 declare
   -- Get this from Dashboard → Authentication → Users.
-  uid constant uuid := '<PASTE-TARGET-USER-ID>';
+  uid constant uuid := '{{QA_USER_ID}}';
 
   -- fixed ids so transactions/budgets/goals can reference accounts + categories
-  acc_checking constant uuid := 'b0000000-0000-4000-8000-000000000001';
-  acc_savings  constant uuid := 'b0000000-0000-4000-8000-000000000002';
-  acc_cash     constant uuid := 'b0000000-0000-4000-8000-000000000003';
-  acc_invest   constant uuid := 'b0000000-0000-4000-8000-000000000004';
+  acc_checking constant uuid := gen_random_uuid();
+  acc_savings  constant uuid := gen_random_uuid();
+  acc_cash     constant uuid := gen_random_uuid();
+  acc_invest   constant uuid := gen_random_uuid();
 
   -- Products tied to a bank account, each with its own table — never accounts.
   -- (The old type='card' and type='consorcio' accounts are both gone: the
   -- credit_cards and loans_consortiums migrations removed those types.)
-  card_nubank constant uuid := 'f0000000-0000-4000-8000-000000000001';
-  loan_car    constant uuid := 'f0000000-0000-4000-8000-000000000002';
-  cons_house  constant uuid := 'f0000000-0000-4000-8000-000000000003';
+  card_nubank constant uuid := gen_random_uuid();
+  loan_car    constant uuid := gen_random_uuid();
+  cons_house  constant uuid := gen_random_uuid();
 
-  cat_groceries constant uuid := 'd0000000-0000-4000-8000-000000000001';
-  cat_dining    constant uuid := 'd0000000-0000-4000-8000-000000000002';
-  cat_transport constant uuid := 'd0000000-0000-4000-8000-000000000003';
-  cat_housing   constant uuid := 'd0000000-0000-4000-8000-000000000004';
-  cat_utilities constant uuid := 'd0000000-0000-4000-8000-000000000005';
-  cat_leisure   constant uuid := 'd0000000-0000-4000-8000-000000000006';
-  cat_shopping  constant uuid := 'd0000000-0000-4000-8000-000000000007';
-  cat_subs      constant uuid := 'd0000000-0000-4000-8000-000000000008';
-  cat_salary    constant uuid := 'd0000000-0000-4000-8000-000000000011';
-  cat_freelance constant uuid := 'd0000000-0000-4000-8000-000000000012';
+  cat_groceries constant uuid := gen_random_uuid();
+  cat_dining    constant uuid := gen_random_uuid();
+  cat_transport constant uuid := gen_random_uuid();
+  cat_housing   constant uuid := gen_random_uuid();
+  cat_utilities constant uuid := gen_random_uuid();
+  cat_leisure   constant uuid := gen_random_uuid();
+  cat_shopping  constant uuid := gen_random_uuid();
+  cat_subs      constant uuid := gen_random_uuid();
+  cat_salary    constant uuid := gen_random_uuid();
+  cat_freelance constant uuid := gen_random_uuid();
 
-  goal_emergency constant uuid := 'e0000000-0000-4000-8000-000000000001';
-  goal_laptop    constant uuid := 'e0000000-0000-4000-8000-000000000002';
+  goal_emergency constant uuid := gen_random_uuid();
+  goal_laptop    constant uuid := gen_random_uuid();
 
   month_start constant date := date_trunc('month', current_date)::date;
 begin
-  -- ---- idempotent reseed (respect on-delete-restrict ordering) ----
-  delete from public.transactions where user_id = uid;
-  delete from public.budgets      where user_id = uid;
-  delete from public.goals        where user_id = uid;  -- goals FK accounts (restrict)
-  delete from public.bills        where user_id = uid;  -- bills FK cards (restrict)
-  delete from public.credit_cards where user_id = uid;  -- cards FK accounts (restrict)
-  delete from public.loans        where user_id = uid;  -- loans FK accounts (restrict)
-  delete from public.consortiums  where user_id = uid;  -- consórcios FK accounts (restrict)
-  delete from public.accounts     where user_id = uid;
-  delete from public.categories   where user_id = uid;
+  if not exists (select 1 from auth.users where id = uid) then
+    raise exception 'Test auth user does not exist';
+  end if;
+  if exists (select 1 from public.accounts where user_id = uid) then
+    raise exception 'Refusing to overwrite existing finance data';
+  end if;
 
   -- ---- accounts (bank accounts ONLY — cards, loans and consórcios each have
   --       their own table and are shown inside an account's detail view) ----
   insert into public.accounts (id, user_id, name, type, initial_balance, color, archived) values
-    (acc_checking, uid, 'Main checking', 'checking',   2500.00, '#60a5fa', false),
-    (acc_savings,  uid, 'Savings',       'savings',    8000.00, '#34d399', false),
-    (acc_cash,     uid, 'Wallet',        'cash',        150.00, '#fbbf24', false),
-    (acc_invest,   uid, 'Investments',   'investment', 5000.00, '#a78bfa', false);
+    (acc_checking, uid, 'Conta corrente', 'checking',   3500.00, '#60a5fa', false),
+    (acc_savings,  uid, 'Reserva',       'savings',    8500.00, '#34d399', false),
+    (acc_cash,     uid, 'Carteira',        'cash',        150.00, '#fbbf24', false),
+    (acc_invest,   uid, 'Investimentos',   'investment', 5000.00, '#a78bfa', false);
 
   update public.accounts set opening_date = (month_start - interval '5 months')::date where user_id = uid;
 
@@ -139,11 +92,11 @@ begin
 
   -- ---- income: salary + freelance, each month for the last 6 months ----
   insert into public.transactions (user_id, date, type, amount, account_id, category_id, note)
-  select uid, (month_start - make_interval(months => m))::date, 'income', 4200.00, acc_checking, cat_salary, 'Monthly salary'
+  select uid, (month_start - make_interval(months => m))::date, 'income', 5200.00, acc_checking, cat_salary, 'Salário mensal'
   from generate_series(0, 5) as m;
 
   insert into public.transactions (user_id, date, type, amount, account_id, category_id, note)
-  select uid, (month_start - make_interval(months => m))::date + 14, 'income', 350.00, acc_checking, cat_freelance, 'Freelance project'
+  select uid, (month_start - make_interval(months => m))::date + 14, 'income', 450.00, acc_checking, cat_freelance, 'Freelance'
   from generate_series(0, 5) as m;
 
   -- ---- BANK expenses: paid straight from an account, last 6 months ----
@@ -198,7 +151,8 @@ begin
     and category_id in (cat_subs, cat_housing)
     and note in ('Streaming & apps', 'Rent');
 
-  update public.transactions set is_recurring = true where user_id = uid and category_id = cat_salary;
+  update public.transactions set is_recurring = true
+  where user_id = uid and category_id = cat_salary;
 
   -- ---- budgets (one deliberately exceeded: groceries 265/mo vs 250 limit) ----
   insert into public.budgets (user_id, category_id, monthly_limit) values
@@ -226,8 +180,54 @@ begin
     (uid, 'Seguro do carro', 210.00, current_date + 18, 'pending', true, null),
     (uid, 'Água',            60.00, current_date - 10, 'paid',    true,  current_date - 9);
 
+
+  -- Prior card invoices were paid from checking; keep cash and consumption separate.
+  insert into public.transactions(user_id, date, type, amount, account_id, note)
+  select uid, (month_start - make_interval(months => m))::date + 9,
+    'expense', 280.00, acc_checking, 'Pagamento da fatura Nubank'
+  from generate_series(0, 4) m;
+
+  -- Match each past cash payment to its actual card cycle and preserve paid invoices.
+  with cycles as (
+    select m, (month_start - make_interval(months=>m))::date + 19 close_date,
+      (month_start - make_interval(months=>m+1))::date + 19 start_date,
+      (month_start - make_interval(months=>m-1))::date + 9 due_date
+    from generate_series(1,5) m
+  ), totals as (
+    select cycles.*, (select sum(t.amount) from public.transactions t
+      where t.user_id=uid and t.card_id=card_nubank and t.date>cycles.start_date
+        and t.date<=cycles.close_date) total from cycles
+  )
+  update public.transactions t set amount=totals.total from totals
+    where t.user_id=uid and t.note='Pagamento da fatura Nubank' and t.date=totals.due_date;
+
+  with cycles as (
+    select m, (month_start - make_interval(months=>m))::date + 19 close_date,
+      (month_start - make_interval(months=>m+1))::date + 19 start_date,
+      (month_start - make_interval(months=>m-1))::date + 9 due_date
+    from generate_series(1,5) m
+  )
+  insert into public.bills(user_id,name,amount,due_date,status,paid_at,card_id,cycle_close,payment_transaction_id)
+  select uid, 'Nubank', sum(t.amount), cycles.due_date, 'paid', cycles.due_date,
+    card_nubank, cycles.close_date, p.id
+  from cycles
+  join public.transactions t on t.user_id=uid and t.card_id=card_nubank
+    and t.date>cycles.start_date and t.date<=cycles.close_date
+  join public.transactions p on p.user_id=uid and p.note='Pagamento da fatura Nubank'
+    and p.date=cycles.due_date
+  group by cycles.close_date, cycles.due_date, p.id;
+
+  insert into public.bills(user_id, name, amount, due_date, status, recurring, paid_at)
+  select uid, 'Internet residencial', 99.90,
+    (month_start - make_interval(months => m))::date + 9,
+    'paid', false, (month_start - make_interval(months => m))::date + 9
+  from generate_series(1, 5) m;
+
+  -- Forward visibility beyond one billing cycle; some bills are intentionally overdue.
+  insert into public.bills(user_id, name, amount, due_date, status, recurring) values
+    (uid, 'Aluguel próximo mês', 1200.00, (month_start + interval '1 month')::date + 1, 'pending', false),
+    (uid, 'Curso de idiomas', 180.00, current_date + 12, 'pending', true);
+
   raise notice 'Seeded full demo dataset (finance + cards + goals + bills) for existing user %', uid;
 end;
 $$;
-
-commit;

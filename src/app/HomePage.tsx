@@ -64,6 +64,7 @@ export function HomePage() {
   const summary = useMemo(() => monthSummary(month, entries), [month, entries])
   const hasFinanceData = accounts.length > 0 || transactions.length > 0 || budgets.length > 0
   const bandKey = {
+    insufficientData: 'finance.healthInsufficient',
     healthy: 'finance.healthHealthy',
     good: 'finance.healthGood',
     attention: 'finance.healthAttention',
@@ -119,7 +120,7 @@ export function HomePage() {
               <HeartPulse className="size-4 text-primary" />
               {t('finance.healthTitle')}
             </h3>
-            {hasFinanceData ? (
+            {hasFinanceData && health.band !== 'insufficientData' ? (
               <>
                 <div className="mt-5 flex items-baseline gap-2">
                   <strong className="text-3xl tabular-nums">{health.score}</strong>

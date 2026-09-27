@@ -2,7 +2,7 @@ import { addDays, todayISO } from '@/lib/dates'
 import { newId } from '@/lib/id'
 import { supabase } from '@/lib/supabase'
 import { patch, state } from './store'
-import { addTransaction } from './transactions'
+import { rowToBill, rowToTransaction } from './rows'
 import type { Bill, SaveResult } from './types'
 
 export type BillInput = Omit<Bill, 'id'>
@@ -16,6 +16,8 @@ export function billRow(id: string, input: BillInput) {
     status: input.status,
     recurring: input.recurring,
     card_id: input.cardId ?? null,
+    cycle_close: input.cycleClose ?? null,
+    recurrence_id: input.recurrenceId ?? null,
     paid_at: input.status === 'paid' ? new Date().toISOString() : null
   }
 }
@@ -24,7 +26,8 @@ export async function addBill(input: BillInput): Promise<SaveResult> {
   const bill: Bill = { ...input, id: newId() }
   const { error } = await supabase.from('bills').insert(billRow(bill.id, input))
   if (error) return 'error'
-  patch({ bills: [...state().bills, bill] })
+  if (input.status === 'paid' && input.recurring) await refreshBills()
+  else patch({ bills: [...state().bills, bill] })
   return 'ok'
 }
 
@@ -32,7 +35,8 @@ export async function updateBill(id: string, input: BillInput): Promise<SaveResu
   const { id: _, ...row } = billRow(id, input)
   const { error } = await supabase.from('bills').update(row).eq('id', id)
   if (error) return 'error'
-  patch({ bills: state().bills.map((b) => (b.id === id ? { ...input, id } : b)) })
+  if (input.status === 'paid' && input.recurring) await refreshBills()
+  else patch({ bills: state().bills.map((b) => (b.id === id ? { ...input, id } : b)) })
   return 'ok'
 }
 
@@ -45,12 +49,13 @@ export async function deleteBill(id: string): Promise<SaveResult> {
 
 /** Quick action: flip a bill to paid (and stamp paid_at) without a full form. */
 export async function markBillPaid(id: string): Promise<SaveResult> {
+  if (state().bills.find((b) => b.id === id)?.cardId) return 'error'
   const { error } = await supabase
     .from('bills')
     .update({ status: 'paid', paid_at: new Date().toISOString() })
     .eq('id', id)
   if (error) return 'error'
-  patch({ bills: state().bills.map((b) => (b.id === id ? { ...b, status: 'paid' } : b)) })
+  await refreshBills()
   return 'ok'
 }
 
@@ -80,16 +85,33 @@ export function billAlerts(bills: Bill[], today: string = todayISO(), windowDays
   })
 }
 
-/** Pay a card-generated bill from a chosen bank account: books a real expense, then marks paid. */
+async function refreshBills(): Promise<void> {
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
+  if (!user) return
+  const { data, error } = await supabase.from('bills').select('*').eq('user_id', user.id).order('due_date')
+  if (error) throw error
+  patch({ bills: data.map(rowToBill) })
+}
+
+/** Idempotent transaction in PostgreSQL: expense and bill status commit together. */
 export async function payCardBill(bill: Bill, accountId: string): Promise<SaveResult> {
-  const txResult = await addTransaction({
-    date: todayISO(),
-    type: 'expense',
-    amount: bill.amount,
-    accountId,
-    note: bill.name,
-    isRecurring: false
+  const { data: transactionId, error } = await supabase.rpc('pay_card_bill', {
+    p_bill_id: bill.id,
+    p_account_id: accountId,
+    p_payment_date: todayISO()
   })
-  if (txResult !== 'ok') return 'error'
-  return markBillPaid(bill.id)
+  if (error) return 'error'
+  if (transactionId && !state().transactions.some((tx) => tx.id === transactionId)) {
+    const { data } = await supabase.from('transactions').select('*').eq('id', transactionId).single()
+    if (!data) return 'error' // committed already; retrying the RPC fetches the same payment
+    patch({ transactions: [...state().transactions, rowToTransaction(data)] })
+  }
+  patch({
+    bills: state().bills.map((b) =>
+      b.id === bill.id ? { ...b, status: 'paid', paymentTransactionId: transactionId ?? undefined } : b
+    )
+  })
+  return 'ok'
 }

@@ -5,8 +5,11 @@ export interface Account {
   name: string
   type: AccountType
   initialBalance: number
+  /** Date on which the opening balance became effective. */
+  openingDate?: string
   color: string
   archived: boolean
+  archivedAt?: string
 }
 
 /**
@@ -51,12 +54,21 @@ export interface Transaction {
   note: string
   /** User-set override for the dashboard's recurring-subscriptions detector. */
   isRecurring: boolean
+  importReference?: string
 }
 
 export interface Budget {
   id: string
   categoryId: string
   monthlyLimit: number
+  effectiveFrom?: string
+}
+
+export interface BudgetLimitHistory {
+  categoryId: string
+  monthlyLimit: number
+  validFrom: string
+  validUntil: string
 }
 
 export interface Goal {
@@ -73,11 +85,8 @@ export interface Goal {
 /**
  * A loan or a consórcio: a product tied to a bank account, not an account.
  *
- * INTENTIONALLY MINIMAL v1 — list/CRUD only. Unlike credit cards these do NOT
- * generate bills and are NOT linked to payment transactions. Progress is the
- * (`installmentsPaid`, `paidAsOf`) pair: `installmentsPaid` was true ON
- * `paidAsOf`, and `installmentsPaidNow()` rolls it forward one per `dueDay`
- * elapsed since. Replace that derivation first if real payment tracking lands.
+ * Progress is confirmed manually through `installmentsPaid`; elapsed due dates
+ * never imply that a payment happened.
  */
 export interface InstallmentPlan {
   id: string
@@ -87,7 +96,7 @@ export interface InstallmentPlan {
   totalAmount: number
   installmentAmount: number
   installmentsTotal: number
-  /** Baseline count, true as of `paidAsOf`. Read `installmentsPaidNow()` for today's. */
+  /** Number of installments the user has actually confirmed paid. */
   installmentsPaid: number
   /** `YYYY-MM-DD`. */
   paidAsOf: string
@@ -110,10 +119,13 @@ export interface Bill {
   /** `YYYY-MM-DD`. */
   dueDate: string
   status: BillStatus
-  /** Marks the bill as repeating monthly (reserved for next-occurrence flows). */
+  /** A paid manual recurring bill generates the next monthly occurrence. */
   recurring: boolean
   /** Set when this bill was generated from a credit card's closed billing cycle. */
   cardId?: string
+  cycleClose?: string
+  recurrenceId?: string
+  paymentTransactionId?: string
 }
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
@@ -132,6 +144,7 @@ export interface FinanceState {
   categories: Category[]
   transactions: Transaction[]
   budgets: Budget[]
+  budgetHistory: BudgetLimitHistory[]
   goals: Goal[]
   bills: Bill[]
   creditCards: CreditCard[]

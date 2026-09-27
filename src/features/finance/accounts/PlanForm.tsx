@@ -21,8 +21,8 @@ import {
 /**
  * Loans and consórcios share every field but `contemplated`, so they share one
  * form. Minimal v1: no bill generation, no payment linking — `installmentsPaid`
- * is a baseline the user types, dated by `paidAsOf`, which the app then rolls
- * forward automatically (store.installmentsPaidNow).
+ * is the confirmed count entered for older installments; new payments can
+ * be recorded from the plan detail and create a linked account expense.
  */
 interface PlanFields {
   name: string
