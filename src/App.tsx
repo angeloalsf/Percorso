@@ -14,8 +14,8 @@ import { AccountDetailPage } from '@/features/finance/accounts/AccountDetailPage
 import { AccountItemPage } from '@/features/finance/accounts/AccountItemPage'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
-const CalendarPage = lazy(() =>
-  import('@/features/calendar/CalendarPage').then((module) => ({ default: module.CalendarPage }))
+const RoutinePage = lazy(() =>
+  import('@/features/routine/RoutinePage').then((module) => ({ default: module.RoutinePage }))
 )
 
 export default function App() {
@@ -34,13 +34,14 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/finances" element={<FinancePage />} />
               <Route
-                path="/calendar"
+                path="/routine"
                 element={
                   <Suspense fallback={<PageSkeleton />}>
-                    <CalendarPage />
+                    <RoutinePage />
                   </Suspense>
                 }
               />
+              <Route path="/calendar" element={<Navigate to="/routine" replace />} />
               {/* Bank-account drill-down: list → account (tabs) → one item. */}
               <Route path="/finances/accounts/:accountId" element={<AccountDetailPage />} />
               <Route path="/finances/accounts/:accountId/:kind/:itemId" element={<AccountItemPage />} />

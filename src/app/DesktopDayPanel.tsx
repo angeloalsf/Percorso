@@ -1,12 +1,14 @@
 import { useEffect, useMemo } from 'react'
-import { NavLink } from 'react-router-dom'
-import { CalendarDays, ChevronRight, Target, X } from 'lucide-react'
-import { monthDays, monthSummary } from '@/features/calendar/dates'
-import { useCalendarStore } from '@/features/calendar/store'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Check, Target, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { billAlerts, goalProgress, useFinanceStore } from '@/features/finance/store'
+import { completionKey, scheduledHabits } from '@/features/routine/dates'
+import { RoutineMiniCalendar } from '@/features/routine/RoutineMiniCalendar'
+import { routineDate } from '@/features/routine/routineDate'
+import { useRoutineStore } from '@/features/routine/store'
 import { useLang, useT } from '@/i18n'
-import { LOCALE_TAGS } from '@/i18n/config'
-import { currentMonthKey, parseISODate, todayISO } from '@/lib/dates'
+import { currentMonthKey, todayISO } from '@/lib/dates'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useProfile } from '@/state/profile'
 
@@ -21,13 +23,14 @@ export function DesktopDayPanel({
   onClose: () => void
 }) {
   const t = useT()
+  const navigate = useNavigate()
+  const { pathname, search } = useLocation()
   const lang = useLang()
   const currency = useProfile((s) => s.currency)
   const month = currentMonthKey()
   const today = todayISO()
-  const entries = useCalendarStore((s) => s.entries)
-  const loaded = useCalendarStore((s) => s.loadedMonths[month])
-  const error = useCalendarStore((s) => s.errorMonths[month])
+  const selected = pathname === '/routine' ? routineDate(new URLSearchParams(search).get('date')) : today
+  const { habits, changes, completions, loadedMonths, status: routineStatus, savingKey } = useRoutineStore()
   const goals = useFinanceStore((s) => s.goals)
   const accounts = useFinanceStore((s) => s.accounts)
   const transactions = useFinanceStore((s) => s.transactions)
@@ -39,7 +42,7 @@ export function DesktopDayPanel({
     const viewport = window.matchMedia('(min-width: 1280px)')
     const loadVisiblePane = () => {
       if (viewport.matches) {
-        void useCalendarStore.getState().loadMonth(month, userId)
+        void useRoutineStore.getState().loadMonth(month, userId)
       }
     }
     loadVisiblePane()
@@ -47,16 +50,15 @@ export function DesktopDayPanel({
     return () => viewport.removeEventListener('change', loadVisiblePane)
   }, [month, userId])
 
-  const days = useMemo(() => monthDays(month), [month])
-  const summary = monthSummary(month, entries)
+  const todayHabits = useMemo(() => scheduledHabits(today, habits, changes), [today, habits, changes])
   const goal = goals[0]
   const progress = goal ? goalProgress(goal, accounts, transactions) : 0
   const goalPct = goal && goal.targetAmount > 0 ? Math.min(100, Math.max(0, (progress / goal.targetAmount) * 100)) : 0
   const alerts = useMemo(() => billAlerts(bills, today).slice(0, 2), [bills, today])
-  const locale = LOCALE_TAGS[lang]
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(
-    parseISODate(`${month}-01`)
-  )
+  const toggle = async (habitId: string): Promise<void> => {
+    const ok = await useRoutineStore.getState().toggleCompletion(habitId, today, userId)
+    if (!ok) toast.error(t('toasts.saveError'))
+  }
 
   return (
     <aside
@@ -81,56 +83,38 @@ export function DesktopDayPanel({
           <p className="mt-1 text-xs text-muted-foreground">{t('workspace.daySubtitle')}</p>
         </div>
 
-        <NavLink
-          to="/calendar"
-          className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <span className="rounded-full bg-accent p-2 text-primary">
-            <CalendarDays className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">{t('calendar.title')}</span>
-            <span className="block text-xs text-muted-foreground">
-              {loaded ? t('calendar.monthSummary', summary) : error ? t('errors.loadFailed') : t('common.loading')}
-            </span>
-          </span>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </NavLink>
-
-        <section aria-label={t('calendar.title')}>
-          <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase capitalize">{monthLabel}</h3>
-          <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {Array.from({ length: 7 }, (_, index) => (
-              <span key={index} className="py-1 text-[10px] font-semibold text-muted-foreground">
-                {new Intl.DateTimeFormat(locale, { weekday: 'narrow' }).format(new Date(2024, 0, 1 + index))}
-              </span>
-            ))}
-            {days.map((day, index) =>
-              day ? (
-                <span
-                  key={day}
-                  title={
-                    entries[day] ? t(entries[day].status === 'done' ? 'calendar.done' : 'calendar.missed') : undefined
-                  }
-                  className={`flex aspect-square items-center justify-center rounded-full text-[11px] tabular ${entries[day]?.status === 'done' ? 'bg-blue-600 text-white' : entries[day]?.status === 'missed' ? 'bg-rose-600 text-white' : day === today ? 'border border-primary text-primary' : 'text-muted-foreground'}`}
-                >
-                  {Number(day.slice(-2))}
-                </span>
-              ) : (
-                <span key={`blank-${index}`} />
-              )
-            )}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3 border-t pt-3 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <i className="size-2 rounded-full bg-blue-600" />
-              {t('calendar.done')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <i className="size-2 rounded-full bg-rose-600" />
-              {t('calendar.missed')}
-            </span>
-          </div>
+        <section aria-label={t('routine.yourHabits')}>
+          <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase">{t('routine.today')}</h3>
+          {routineStatus !== 'ready' || !loadedMonths[month] ? (
+            <p className="text-xs text-muted-foreground">
+              {t(routineStatus === 'error' ? 'errors.loadFailed' : 'common.loading')}
+            </p>
+          ) : todayHabits.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t('routine.todayEmpty')}</p>
+          ) : (
+            <div className="space-y-2">
+              {todayHabits.map((habit) => {
+                const checked = Boolean(completions[completionKey(habit.id, today)])
+                return (
+                  <button
+                    key={habit.id}
+                    type="button"
+                    aria-pressed={checked}
+                    disabled={Boolean(savingKey)}
+                    onClick={() => void toggle(habit.id)}
+                    className="flex min-h-10 w-full items-center gap-2 rounded-md border px-3 text-left text-xs transition-colors hover:bg-accent disabled:opacity-60"
+                  >
+                    <span
+                      className={`flex size-4 shrink-0 items-center justify-center rounded border ${checked ? 'border-primary bg-primary text-primary-foreground' : ''}`}
+                    >
+                      {checked && <Check className="size-3" />}
+                    </span>
+                    <span className={checked ? 'text-muted-foreground line-through' : ''}>{habit.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         {financeReady && (
@@ -177,6 +161,14 @@ export function DesktopDayPanel({
             </ul>
           </section>
         )}
+
+        <div className="border-t pt-5">
+          <RoutineMiniCalendar
+            userId={userId}
+            selected={selected}
+            onSelect={(date) => navigate(`/routine?date=${date}`)}
+          />
+        </div>
       </div>
     </aside>
   )

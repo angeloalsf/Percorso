@@ -5,12 +5,14 @@ import {
   Activity,
   CalendarDays,
   CalendarCheck,
+  CircleCheck,
   ChartNoAxesCombined,
   CreditCard,
   FolderOpen,
   House,
   Landmark,
   LayoutDashboard,
+  ListChecks,
   PanelRightOpen,
   ReceiptText,
   Settings,
@@ -38,7 +40,7 @@ const FINANCE_SECTIONS: { id: string; labelKey: TKey; icon: typeof Wallet }[] = 
 const MOBILE_NAV: { to: string; icon: typeof Wallet; labelKey: TKey }[] = [
   { to: '/', icon: House, labelKey: 'nav.home' },
   { to: '/finances', icon: Wallet, labelKey: 'nav.finances' },
-  { to: '/calendar', icon: CalendarDays, labelKey: 'nav.calendar' },
+  { to: '/routine', icon: ListChecks, labelKey: 'nav.routine' },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' }
 ]
 
@@ -62,22 +64,24 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
   const language = usePrefs((s) => s.language)
   const inFinances = pathname.startsWith('/finances')
   const inHome = pathname === '/'
+  const inRoutine = pathname === '/routine'
+  const explorerVisible = explorerOpen
   const section = pathname.startsWith('/finances/accounts/') ? 'accounts' : financeTab
   const currentFinanceItem = FINANCE_SECTIONS.find((item) => item.id === section)
   const CurrentIcon = inHome
     ? House
     : inFinances
       ? (currentFinanceItem?.icon ?? Wallet)
-      : pathname === '/calendar'
-        ? CalendarDays
+      : inRoutine
+        ? ListChecks
         : Settings
   const activeLabel = inHome
     ? t('nav.home')
     : inFinances
       ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
-      : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
-  const sectionGroup = inFinances ? t('nav.finances') : 'Percorso'
-  const showTabDivider = !inHome && !inFinances
+      : t(inRoutine ? 'nav.routine' : 'nav.settings')
+  const sectionGroup = inFinances ? t('nav.finances') : inRoutine ? t('nav.routine') : 'Percorso'
+  const showTabDivider = !inHome && !inFinances && !inRoutine
   useLayoutEffect(() => {
     contentRef.current?.scrollTo(0, 0)
     window.scrollTo(0, 0)
@@ -100,10 +104,10 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       <div
         className={cn(
           'min-h-0 flex-1 lg:grid lg:gap-[3px]',
-          explorerOpen ? 'lg:grid-cols-[3.25rem_14rem_minmax(0,1fr)]' : 'lg:grid-cols-[3.25rem_minmax(0,1fr)]',
-          explorerOpen && dayViewOpen
+          explorerVisible ? 'lg:grid-cols-[3.25rem_14rem_minmax(0,1fr)]' : 'lg:grid-cols-[3.25rem_minmax(0,1fr)]',
+          explorerVisible && dayViewOpen
             ? 'xl:grid-cols-[3.25rem_15rem_minmax(0,1fr)_19rem]'
-            : explorerOpen
+            : explorerVisible
               ? 'xl:grid-cols-[3.25rem_15rem_minmax(0,1fr)]'
               : dayViewOpen
                 ? 'xl:grid-cols-[3.25rem_minmax(0,1fr)_19rem]'
@@ -140,21 +144,20 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
           >
             <Wallet className="size-5" />
           </button>
+          <button
+            type="button"
+            title={t('nav.routine')}
+            aria-label={t('nav.routine')}
+            aria-current={inRoutine ? 'page' : undefined}
+            onClick={() => handleRailAction(inRoutine, () => navigate('/routine'))}
+            className={cn(
+              'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+              inRoutine ? 'bg-accent text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <ListChecks className="size-5" />
+          </button>
           <div className="mt-auto flex w-full flex-col items-center gap-2 px-2">
-            <button
-              type="button"
-              title={t('nav.calendar')}
-              aria-label={t('nav.calendar')}
-              aria-current={pathname === '/calendar' ? 'page' : undefined}
-              onClick={() => handleRailAction(pathname === '/calendar', () => navigate('/calendar'))}
-              className={cn(
-                'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-                pathname === '/calendar' ? 'bg-accent text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <CalendarDays className="size-5" />
-            </button>
-            <div className="w-full border-t" aria-hidden="true" />
             <button
               type="button"
               title={t('nav.settings')}
@@ -171,7 +174,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
           </div>
         </nav>
 
-        {explorerOpen && (
+        {explorerVisible && (
           <aside
             className="hidden min-h-0 overflow-y-auto rounded-lg border bg-card p-3 lg:block"
             aria-label={t('workspace.explore')}
@@ -214,6 +217,28 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
                     {t(labelKey)}
                   </button>
                 ))}
+              </>
+            ) : inRoutine ? (
+              <>
+                <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('nav.routine')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('routine-day')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <CalendarDays className="size-4" />
+                  {t('routine.dayCalendar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('routine-habits')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <CircleCheck className="size-4" />
+                  {t('routine.yourHabits')}
+                </button>
               </>
             ) : (
               <>

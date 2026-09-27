@@ -8,6 +8,7 @@ import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Splash } from '@/components/ui/splash'
 import { useCalendarStore } from '@/features/calendar/store'
 import { useFinanceStore } from '@/features/finance/store'
+import { useRoutineStore } from '@/features/routine/store'
 import { useT } from '@/i18n'
 import { useProfile } from '@/state/profile'
 
@@ -25,6 +26,7 @@ function Shell({ userId }: { userId: string }) {
   const navigate = useNavigate()
   const [financeTab, setFinanceTab] = useState('dashboard')
   const needsFinance = pathname === '/' || pathname.startsWith('/finances')
+  const showsFinanceSummary = needsFinance || pathname === '/routine'
   const financeStatus = useFinanceStore((s) => s.status)
   const fullName = useProfile((s) => s.fullName)
   const firstName = fullName.trim().split(/\s+/)[0]
@@ -39,13 +41,14 @@ function Shell({ userId }: { userId: string }) {
     return () => {
       useFinanceStore.getState().reset()
       useCalendarStore.getState().reset()
+      useRoutineStore.getState().reset()
       useProfile.getState().reset()
     }
   }, [userId])
 
   useEffect(() => {
-    if (needsFinance) void useFinanceStore.getState().load()
-  }, [needsFinance, userId])
+    if (showsFinanceSummary) void useFinanceStore.getState().load()
+  }, [showsFinanceSummary, userId])
 
   const failed = needsFinance && financeStatus === 'error'
   const ready = !needsFinance || financeStatus === 'ready'

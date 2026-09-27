@@ -64,7 +64,8 @@ export const ptBR: typeof en = {
   nav: {
     home: 'Início',
     finances: 'Finanças',
-    calendar: 'Calendário',
+    calendar: 'Rotina',
+    routine: 'Rotina',
     settings: 'Ajustes'
   },
   home: {
@@ -79,9 +80,9 @@ export const ptBR: typeof en = {
     categorizedSpending: 'Gastos categorizados neste mês',
     healthHint: 'Veja os fatores desta pontuação em Finanças.',
     emptyFinance: 'Adicione uma conta ou transação para acompanhar sua saúde financeira.',
-    calendarGoals: 'Metas do calendário',
-    calendarHint: 'Seus registros diários deste mês.',
-    viewCalendar: 'Ver calendário'
+    calendarGoals: 'Sua rotina',
+    calendarHint: 'Hábitos de hoje e progresso do mês.',
+    viewCalendar: 'Ver rotina'
   },
   workspace: {
     mainNavigation: 'Navegação principal',
@@ -130,6 +131,36 @@ export const ptBR: typeof en = {
     markMissed: 'Pintar de vermelho',
     clear: 'Limpar este dia',
     yesterdayRule: 'Você pode marcar ontem e os dias anteriores. O dia de hoje fica disponível amanhã.'
+  },
+  routine: {
+    title: 'Rotina',
+    intro: 'Organize e acompanhe seus hábitos dia a dia.',
+    dayCalendar: 'Rotina por dia',
+    complete: 'Completo',
+    partial: 'Parcial',
+    addHabit: 'Novo hábito',
+    editHabit: 'Editar hábito',
+    yourHabits: 'Seus hábitos',
+    activeCount: '{count} ativos',
+    archivedCount: '{count} hábitos arquivados permanecem no histórico',
+    emptyHint: 'Crie um hábito para começar a acompanhar seus dias.',
+    noHabitsDay: 'Nenhum hábito programado para este dia.',
+    progress: '{done} de {total} hábitos concluídos',
+    selectHint: 'Selecione um dia para ver os hábitos.',
+    nameHint: 'ex.: Treinar, ler, estudar italiano',
+    days: 'Dias da semana',
+    required: 'Informe um nome e escolha pelo menos um dia.',
+    saveName: 'Salvar nome',
+    saveDays: 'Salvar dias',
+    scheduleHint: 'A nova programação começa hoje; os dias anteriores mantêm a programação original.',
+    archive: 'Arquivar hábito',
+    archiveConfirm: 'Arquivar {name}? As realizações anteriores continuam no calendário.',
+    futureRule: 'Você pode planejar os próximos dias, mas ainda não marcá-los como concluídos.',
+    previousMark: 'Marcação anterior do dia',
+    legacyHint: 'Não havia hábitos programados. As marcações antigas do dia continuam visíveis aqui.',
+    today: 'Hoje',
+    todayEmpty: 'Nenhum hábito programado para hoje.',
+    openRoutine: 'Abrir rotina'
   },
   finance: {
     tabDashboard: 'Painel',

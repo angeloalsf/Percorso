@@ -64,7 +64,8 @@ export const it: typeof en = {
   nav: {
     home: 'Inizio',
     finances: 'Finanze',
-    calendar: 'Calendario',
+    calendar: 'Abitudini',
+    routine: 'Abitudini',
     settings: 'Impostazioni'
   },
   home: {
@@ -79,9 +80,9 @@ export const it: typeof en = {
     categorizedSpending: 'Spese per categoria di questo mese',
     healthHint: 'Vedi i fattori di questo punteggio in Finanze.',
     emptyFinance: 'Aggiungi un conto o una transazione per vedere la salute finanziaria.',
-    calendarGoals: 'Obiettivi del calendario',
-    calendarHint: 'Le registrazioni quotidiane di questo mese.',
-    viewCalendar: 'Vedi calendario'
+    calendarGoals: 'La tua routine',
+    calendarHint: 'Le abitudini di oggi e i progressi del mese.',
+    viewCalendar: 'Vedi routine'
   },
   workspace: {
     mainNavigation: 'Navigazione principale',
@@ -130,6 +131,36 @@ export const it: typeof en = {
     markMissed: 'Segna in rosso',
     clear: 'Cancella questo giorno',
     yesterdayRule: 'Puoi segnare ieri e i giorni precedenti. Oggi sarà disponibile domani.'
+  },
+  routine: {
+    title: 'La tua routine',
+    intro: 'Organizza e segui le tue abitudini giorno per giorno.',
+    dayCalendar: 'Abitudini per giorno',
+    complete: 'Completo',
+    partial: 'Parziale',
+    addHabit: 'Nuova abitudine',
+    editHabit: 'Modifica abitudine',
+    yourHabits: 'Le tue abitudini',
+    activeCount: '{count} attive',
+    archivedCount: '{count} abitudini archiviate restano nella cronologia',
+    emptyHint: 'Crea un’abitudine per iniziare a seguire le tue giornate.',
+    noHabitsDay: 'Nessuna abitudine prevista per questo giorno.',
+    progress: '{done} di {total} abitudini completate',
+    selectHint: 'Seleziona un giorno per vedere le abitudini.',
+    nameHint: 'es.: Allenarsi, leggere, studiare italiano',
+    days: 'Giorni della settimana',
+    required: 'Inserisci un nome e seleziona almeno un giorno.',
+    saveName: 'Salva nome',
+    saveDays: 'Salva giorni',
+    scheduleHint: 'Il nuovo programma inizia oggi; i giorni precedenti mantengono quello originale.',
+    archive: 'Archivia abitudine',
+    archiveConfirm: 'Archivia {name}? I completamenti precedenti restano nel calendario.',
+    futureRule: 'Puoi pianificare i prossimi giorni, ma non segnarli ancora come completati.',
+    previousMark: 'Segno precedente del giorno',
+    legacyHint: 'Non erano previste abitudini. I vecchi segni giornalieri restano visibili qui.',
+    today: 'Oggi',
+    todayEmpty: 'Nessuna abitudine prevista oggi.',
+    openRoutine: 'Apri routine'
   },
   finance: {
     tabDashboard: 'Cruscotto',
