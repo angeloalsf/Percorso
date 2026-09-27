@@ -242,8 +242,13 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
         )}
 
         <main className="min-w-0 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-lg lg:border lg:bg-card">
-          <div className="z-10 hidden h-11 shrink-0 items-center border-b bg-card lg:flex">
-            <span className="flex h-full items-center gap-2 border-r border-b-2 border-b-primary px-4 text-sm font-medium">
+          <div className={cn('z-10 hidden h-11 shrink-0 items-center bg-card lg:flex', !inHome && 'border-b')}>
+            <span
+              className={cn(
+                'flex h-full items-center gap-2 px-4 text-sm font-medium',
+                !inHome && 'border-r border-b-2 border-b-primary'
+              )}
+            >
               <CurrentIcon className="size-4 text-primary" />
               {activeLabel}
             </span>

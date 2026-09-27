@@ -73,8 +73,7 @@ export function HomePage() {
   return (
     <div className="space-y-7">
       <header>
-        <p className="text-xs font-semibold tracking-wider text-primary uppercase">Percorso / {t('nav.home')}</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {firstName ? t('home.greetingName', { name: firstName }) : t('home.greeting')}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('home.intro')}</p>
