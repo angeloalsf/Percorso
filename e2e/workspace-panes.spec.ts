@@ -30,3 +30,24 @@ test('desktop panes collapse and reopen from their controls', async ({ page }) =
   await expect(explorer).toBeVisible()
   await expect(page).toHaveURL(/\/calendar/)
 })
+
+test('main content returns to the top when changing pages and finance sections', async ({ page }) => {
+  await page.setViewportSize({ width: 1365, height: 650 })
+  await login(page)
+
+  const content = page.getByRole('main').locator(':scope > div').nth(1)
+  const scrollDown = async () => {
+    await content.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  }
+
+  await scrollDown()
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Finances' }).click()
+  await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBe(0)
+
+  await scrollDown()
+  await page.getByRole('navigation', { name: 'Finances' }).getByRole('button', { name: 'Transactions' }).click()
+  await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBe(0)
+})

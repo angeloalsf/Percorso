@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
@@ -54,6 +54,7 @@ interface Props {
 export function WorkspaceLayout({ children, userId, firstName, financeTab, openFinance }: Props) {
   const [explorerOpen, setExplorerOpen] = useState(true)
   const [dayViewOpen, setDayViewOpen] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
   const t = useT()
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -76,6 +77,10 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
       : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
   const sectionGroup = inFinances ? t('nav.finances') : 'Percorso'
+  useLayoutEffect(() => {
+    contentRef.current?.scrollTo(0, 0)
+    window.scrollTo(0, 0)
+  }, [pathname, financeTab])
   const handleRailAction = (active: boolean, action: () => void): void => {
     if (active) setExplorerOpen((open) => !open)
     else {
@@ -254,7 +259,10 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
               </button>
             )}
           </div>
-          <div className="min-w-0 lg:mx-1 lg:my-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-md">
+          <div
+            ref={contentRef}
+            className="min-w-0 lg:mx-1 lg:my-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-md"
+          >
             <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8 lg:max-w-none lg:px-6 lg:pt-6 lg:pb-8">
               <header className="mb-5 flex items-center justify-between gap-3 md:mb-6 lg:hidden">
                 <span className="text-sm font-bold tracking-wide text-foreground">Percorso</span>
