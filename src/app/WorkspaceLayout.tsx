@@ -254,7 +254,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
               </button>
             )}
           </div>
-          <div className="min-w-0 lg:mr-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+          <div className="min-w-0 lg:mx-1 lg:my-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-md">
             <div className="mx-auto w-full max-w-5xl px-4 pt-5 pb-24 md:px-8 md:pt-8 lg:max-w-none lg:px-6 lg:pt-6 lg:pb-8">
               <header className="mb-5 flex items-center justify-between gap-3 md:mb-6 lg:hidden">
                 <span className="text-sm font-bold tracking-wide text-foreground">Percorso</span>

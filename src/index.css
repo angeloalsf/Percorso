@@ -41,6 +41,8 @@
   --border: oklch(0.91 0.004 90);
   --input: oklch(0.91 0.004 90);
   --ring: oklch(0.6 0.12 160);
+  --scrollbar-thumb: oklch(0.85 0.006 90);
+  --scrollbar-thumb-hover: oklch(0.76 0.008 90);
 }
 
 .dark {
@@ -66,6 +68,8 @@
   --border: oklch(0.29 0.01 260);
   --input: oklch(0.31 0.01 260);
   --ring: oklch(0.72 0.13 160);
+  --scrollbar-thumb: oklch(0.39 0.01 260);
+  --scrollbar-thumb-hover: oklch(0.47 0.01 260);
 }
 
 @theme inline {
@@ -105,6 +109,30 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
   html {
     -webkit-tap-highlight-color: transparent;
