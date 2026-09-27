@@ -1,8 +1,9 @@
 # Percorso
 
-**Percorso** is a mobile-first web app for your **personal finances**. It started life as a local-only Electron desktop app ("personal life operating system"); this version narrows the scope to Finances and moves the data to [Supabase](https://supabase.com) behind per-user Row Level Security.
+**Percorso** is a personal workspace with Home, Finances, Calendar and Settings. It connects financial information and the calendar in one place, with per-user data protected by [Supabase](https://supabase.com) Row Level Security.
 
-- **Finances** — accounts, transactions (income / expense / transfers), categories, monthly budgets, and a dashboard with net worth, a spending donut, and 6-month cash flow.
+- **Finances** — accounts, cards, transactions, bills, budgets, goals, loans and consortiums, with cash forecasting and CSV/OFX import.
+- **Calendar** — a daily view alongside the workspace's Home and day pane.
 
 Three languages (English, Brazilian Portuguese, Italian — compile-time-checked dictionaries), dark & light themes, installable on a phone's home screen via the browser's "Add to Home Screen".
 
@@ -95,7 +96,7 @@ psql "$DATABASE_URL" -f supabase/seed/test-data.sql   # local db URL, or a dispo
 
 (The seeds insert real `auth.users` rows with bcrypt passwords, so they must run as the `postgres`/superuser role — `db reset`, `psql`, or the Dashboard SQL Editor of a disposable project. Change the credentials before use.)
 
-**Populating a real account instead:** [supabase/seed/demo-data.sql](supabase/seed/demo-data.sql) loads the same dataset for an **existing** user (edit the `uid` at the top to the account's id, from Dashboard → Authentication → Users). It creates no `auth.users` row and no password, so it is safe to paste into a real project's SQL editor. It is deliberately _not_ in `sql_paths`, so `db reset` never runs it.
+**Populating an existing account instead:** [supabase/seed/demo-data.sql](supabase/seed/demo-data.sql) loads the same dataset for an **existing** user (edit the `uid` at the top to the account's id, from Dashboard → Authentication → Users). It creates no `auth.users` row or password. It deletes that user's existing finance rows first, so use it only for a disposable account. It is deliberately _not_ in `sql_paths`, so `db reset` never runs it.
 
 ### 7. Run
 
@@ -162,7 +163,7 @@ update public.profiles set is_admin = true where id = '<the-user-uuid>';
 
 - **Passwords** are handled entirely by Supabase Auth (bcrypt server-side). The app never sees, stores, or hashes a password itself.
 - **Transport** is HTTPS end-to-end (Supabase default; `localhost` in dev).
-- **Authorization** is enforced in the database, not the client: every table has RLS with per-operation policies scoped to `auth.uid() = user_id` (reads additionally allow admins), so even a hand-crafted API request with the anon key can only touch permitted rows. Foreign keys are composite (`id, user_id`), so a row can't reference another user's account or category either.
+- **Authorization** is enforced in the database: every table has RLS with per-operation policies scoped to `auth.uid() = user_id` (reads additionally allow admins), so even a hand-crafted API request with the anon key can only touch permitted rows. Normal Finance reads also explicitly scope to the signed-in user. Foreign keys are composite (`id, user_id`), so a row can't reference another user's account or category either.
 - **Column-level encryption (pgcrypto) — evaluated and deliberately not used.** Encrypting amounts/notes with `pgp_sym_encrypt` would require the key to live either (a) in the database itself — no protection beyond what RLS + disk encryption already give, since anyone who can read the table can call the decrypt function — or (b) in the browser bundle — public by definition. It would also break server-side filtering, aggregation, and numeric types (budgets, cash flow). Supabase already encrypts data at rest at the infrastructure level and in transit via TLS; combined with RLS, that meets this project's threat model (protecting each user's data from other users and from casual DB exposure). If a stronger model is ever needed (protecting data _from the database operator_), the right tool is client-side end-to-end encryption with user-derived keys — a product decision, not a column tweak.
 
 ## Project layout
@@ -171,7 +172,7 @@ update public.profiles set is_admin = true where id = '<the-user-uuid>';
 supabase/
 ├── migrations/        # schema + RLS (apply to your project) — the source of truth
 ├── schema-full.sql    # snapshot of the whole current schema (rebuild script — DESTRUCTIVE)
-└── seed/              # admin.sql + test-data.sql (LOCAL-ONLY) · demo-data.sql (production-safe)
+└── seed/              # local test users · demo-data.sql (destructive for target user) · qa-persona.sql
 src/
 ├── main.tsx           # boot: theme init → render <App>
 ├── App.tsx            # router: /login /signup | /finances /settings

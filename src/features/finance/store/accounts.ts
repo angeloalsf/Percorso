@@ -1,4 +1,5 @@
 import { newId } from '@/lib/id'
+import { todayISO } from '@/lib/dates'
 import { supabase } from '@/lib/supabase'
 import { patch, state } from './store'
 import type { Account, DeleteResult, SaveResult, Transaction } from './types'
@@ -6,12 +7,13 @@ import type { Account, DeleteResult, SaveResult, Transaction } from './types'
 export type AccountInput = Omit<Account, 'id' | 'archived'>
 
 export async function addAccount(input: AccountInput): Promise<SaveResult> {
-  const account: Account = { ...input, id: newId(), archived: false }
+  const account: Account = { ...input, openingDate: input.openingDate ?? todayISO(), id: newId(), archived: false }
   const { error } = await supabase.from('accounts').insert({
     id: account.id,
     name: account.name,
     type: account.type,
     initial_balance: account.initialBalance,
+    opening_date: account.openingDate,
     color: account.color
   })
   if (error) return 'error'
@@ -22,7 +24,13 @@ export async function addAccount(input: AccountInput): Promise<SaveResult> {
 export async function updateAccount(id: string, input: AccountInput): Promise<SaveResult> {
   const { error } = await supabase
     .from('accounts')
-    .update({ name: input.name, type: input.type, initial_balance: input.initialBalance, color: input.color })
+    .update({
+      name: input.name,
+      type: input.type,
+      initial_balance: input.initialBalance,
+      opening_date: input.openingDate,
+      color: input.color
+    })
     .eq('id', id)
   if (error) return 'error'
   patch({ accounts: state().accounts.map((a) => (a.id === id ? { ...a, ...input } : a)) })
@@ -30,9 +38,12 @@ export async function updateAccount(id: string, input: AccountInput): Promise<Sa
 }
 
 export async function setAccountArchived(id: string, archived: boolean): Promise<SaveResult> {
-  const { error } = await supabase.from('accounts').update({ archived }).eq('id', id)
+  const archivedAt = archived ? todayISO() : null
+  const { error } = await supabase.from('accounts').update({ archived, archived_at: archivedAt }).eq('id', id)
   if (error) return 'error'
-  patch({ accounts: state().accounts.map((a) => (a.id === id ? { ...a, archived } : a)) })
+  patch({
+    accounts: state().accounts.map((a) => (a.id === id ? { ...a, archived, archivedAt: archivedAt ?? undefined } : a))
+  })
   return 'ok'
 }
 

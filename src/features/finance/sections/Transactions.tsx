@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeftRight, CreditCard as CreditCardIcon, Pencil, Plus, SearchX, Trash2, Wallet } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  CreditCard as CreditCardIcon,
+  FileUp,
+  Pencil,
+  Plus,
+  SearchX,
+  Trash2,
+  Wallet
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +35,7 @@ import {
   type TransactionInput,
   type TransactionType
 } from '../store'
+import { StatementImport } from './StatementImport'
 
 export function Transactions() {
   const t = useT()
@@ -35,9 +45,11 @@ export function Transactions() {
   const money = (v: number): string => formatCurrency(v, currency, lang)
 
   const [editing, setEditing] = useState<Transaction | 'new' | null>(null)
+  const [importing, setImporting] = useState(false)
   const [deleting, setDeleting] = useState<Transaction | null>(null)
   const [filterMonth, setFilterMonth] = useState<string>('all')
   const [filterAccount, setFilterAccount] = useState<string>('all')
+  const [filterCard, setFilterCard] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -72,6 +84,7 @@ export function Transactions() {
       .reverse()
       .filter((tx) => filterMonth === 'all' || monthKey(tx.date) === filterMonth)
       .filter((tx) => filterAccount === 'all' || tx.accountId === filterAccount || tx.toAccountId === filterAccount)
+      .filter((tx) => filterCard === 'all' || tx.cardId === filterCard)
       .filter((tx) => filterType === 'all' || tx.type === filterType)
       .filter((tx) => {
         if (filterCategory === 'all') return true
@@ -83,7 +96,7 @@ export function Transactions() {
         const category = tx.categoryId ? (categoryById.get(tx.categoryId)?.name ?? '') : ''
         return tx.note.toLowerCase().includes(query) || category.toLowerCase().includes(query)
       })
-  }, [transactions, filterMonth, filterAccount, filterType, filterCategory, search, categoryById])
+  }, [transactions, filterMonth, filterAccount, filterCard, filterType, filterCategory, search, categoryById])
 
   const groups = useMemo(() => {
     const byDate = new Map<string, Transaction[]>()
@@ -106,22 +119,36 @@ export function Transactions() {
     <>
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-base font-semibold">{t('finance.tabTransactions')}</h3>
-        <Button
-          size="sm"
-          onClick={() => setEditing('new')}
-          disabled={accounts.length === 0 && creditCards.length === 0}
-        >
-          <Plus />
-          {t('finance.addTransaction')}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setImporting(true)} disabled={accounts.length === 0}>
+            <FileUp />
+            {t('finance.importStatement')}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setEditing('new')}
+            disabled={accounts.length === 0 && creditCards.length === 0}
+          >
+            <Plus />
+            {t('finance.addTransaction')}
+          </Button>
+        </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
           <option value="all">{t('finance.allMonths')}</option>
           {months.map((m) => (
             <option key={m} value={m}>
               {formatMonthLong(m, lang)}
+            </option>
+          ))}
+        </Select>
+        <Select value={filterCard} onChange={(e) => setFilterCard(e.target.value)}>
+          <option value="all">{t('finance.allCards')}</option>
+          {creditCards.map((card) => (
+            <option key={card.id} value={card.id}>
+              {card.name}
             </option>
           ))}
         </Select>
@@ -238,6 +265,7 @@ export function Transactions() {
         </div>
       )}
 
+      {importing && <StatementImport onClose={() => setImporting(false)} />}
       {editing && <TransactionForm transaction={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
       {deleting && (
         <ConfirmDialog

@@ -1,7 +1,7 @@
 {
   "name": "Percorso",
   "short_name": "Percorso",
-  "description": "Mobile-first personal finances",
+  "description": "Personal workspace for finances and daily life",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#16181d",

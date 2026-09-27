@@ -12,36 +12,55 @@ import { ColorDot, List, ListRow } from '@/components/ui/list'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { Select } from '@/components/ui/select'
 import { useLang, useT } from '@/i18n'
-import { currentMonthKey } from '@/lib/dates'
-import { formatCurrency } from '@/lib/format'
+import { currentMonthKey, lastNMonthKeys } from '@/lib/dates'
+import { formatCurrency, formatMonthLong } from '@/lib/format'
 import { useProfile } from '@/state/profile'
-import { deleteBudget, spendingByCategory, upsertBudget, useFinanceStore, type Budget } from '../store'
+import { budgetLimitAt, deleteBudget, spendingByCategory, upsertBudget, useFinanceStore, type Budget } from '../store'
 
 export function Budgets() {
   const t = useT()
   const lang = useLang()
-  const { budgets, categories, transactions } = useFinanceStore()
+  const { budgets, budgetHistory, categories, transactions } = useFinanceStore()
   const currency = useProfile((s) => s.currency)
   const money = (v: number): string => formatCurrency(v, currency, lang)
 
   const [editing, setEditing] = useState<Budget | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Budget | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey())
 
-  const spent = useMemo(() => spendingByCategory(transactions, currentMonthKey()), [transactions])
+  const spent = useMemo(() => spendingByCategory(transactions, selectedMonth), [transactions, selectedMonth])
   const expenseCategories = categories.filter((c) => c.type === 'expense')
   const available = expenseCategories.filter((c) => !budgets.some((b) => b.categoryId === c.id))
 
-  const rows = useMemo(
-    () =>
-      budgets
-        .map((budget) => ({
-          budget,
-          category: categories.find((c) => c.id === budget.categoryId),
-          spentAmount: spent.get(budget.categoryId) ?? 0
-        }))
-        .sort((a, b) => b.spentAmount / b.budget.monthlyLimit - a.spentAmount / a.budget.monthlyLimit),
-    [budgets, categories, spent]
-  )
+  const rows = useMemo(() => {
+    const current = budgets
+      .map((original) => ({
+        budget: { ...original, monthlyLimit: budgetLimitAt(original, budgetHistory, selectedMonth) },
+        category: categories.find((c) => c.id === original.categoryId),
+        spentAmount: spent.get(original.categoryId) ?? 0
+      }))
+      .filter(
+        (row): row is { budget: Budget; category: typeof row.category; spentAmount: number } =>
+          row.budget.monthlyLimit !== null
+      )
+      .map(({ budget, category, spentAmount }) => ({ budget, category, spentAmount }))
+    const end = `${selectedMonth}-31`
+    const previous = budgetHistory
+      .filter(
+        (h) =>
+          h.validFrom <= end && h.validUntil > end && !current.some((row) => row.budget.categoryId === h.categoryId)
+      )
+      .sort((a, b) => b.validFrom.localeCompare(a.validFrom))
+      .filter((h, i, list) => !list.slice(0, i).some((prior) => prior.categoryId === h.categoryId))
+      .map((h) => ({
+        budget: { id: `historic-${h.categoryId}`, categoryId: h.categoryId, monthlyLimit: h.monthlyLimit },
+        category: categories.find((c) => c.id === h.categoryId),
+        spentAmount: spent.get(h.categoryId) ?? 0
+      }))
+    return [...current, ...previous].sort(
+      (a, b) => b.spentAmount / b.budget.monthlyLimit - a.spentAmount / a.budget.monthlyLimit
+    )
+  }, [budgets, budgetHistory, categories, spent, selectedMonth])
 
   const confirmDelete = async (budget: Budget): Promise<void> => {
     const result = await deleteBudget(budget.id)
@@ -59,6 +78,19 @@ export function Budgets() {
           {t('finance.addBudget')}
         </Button>
       </div>
+      <Select
+        className="mb-3 max-w-48"
+        value={selectedMonth}
+        onChange={(event) => setSelectedMonth(event.target.value)}
+      >
+        {lastNMonthKeys(12)
+          .reverse()
+          .map((month) => (
+            <option key={month} value={month}>
+              {formatMonthLong(month, lang)}
+            </option>
+          ))}
+      </Select>
       {rows.length === 0 ? (
         <EmptyState
           icon={Target}
@@ -78,7 +110,7 @@ export function Budgets() {
                     {over && <Badge variant="danger">{t('finance.overBudget')}</Badge>}
                   </div>
                   <div className="tabular mt-0.5 text-xs text-muted-foreground">
-                    {money(spentAmount)} / {money(budget.monthlyLimit)} · {t('common.thisMonth')}
+                    {money(spentAmount)} / {money(budget.monthlyLimit)} · {formatMonthLong(selectedMonth, lang)}
                   </div>
                   <ProgressBar
                     className="mt-2 max-w-sm"
@@ -88,20 +120,27 @@ export function Budgets() {
                     warnOverflow
                   />
                 </div>
-                <div className="flex shrink-0 items-center">
-                  <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(budget)}>
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={t('common.delete')}
-                    onClick={() => setDeleting(budget)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
+                {selectedMonth === currentMonthKey() && budgets.some((current) => current.id === budget.id) && (
+                  <div className="flex shrink-0 items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('common.edit')}
+                      onClick={() => setEditing(budget)}
+                    >
+                      <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={t('common.delete')}
+                      onClick={() => setDeleting(budget)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                )}
               </ListRow>
             )
           })}

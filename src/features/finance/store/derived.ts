@@ -1,6 +1,8 @@
-import { addMonths, monthKey, shiftMonthKey } from '@/lib/dates'
+import { addMonths, isoForDay, monthKey, shiftMonthKey } from '@/lib/dates'
 import { accountBalance } from './accounts'
-import type { Account, Budget, Category, Transaction } from './types'
+import { cardOpenInvoice, nextCardDue } from './cards'
+import { planNextDue } from './plans'
+import type { Account, Bill, Budget, Category, CreditCard, InstallmentPlan, Transaction } from './types'
 
 /**
  * CASH-FLOW totals: only bank-account transactions count (a card purchase has
@@ -35,10 +37,25 @@ export function spendingByCategory(transactions: Transaction[], month: string): 
   return map
 }
 
-/** Net worth (active accounts) as of the END of `month` — only counts transactions dated on/before it. */
+/** Cash held at month end. Archived accounts remain in historical months. */
 export function netWorthAsOf(accounts: Account[], transactions: Transaction[], month: string): number {
-  const upTo = transactions.filter((tx) => monthKey(tx.date) <= month)
-  return accounts.filter((a) => !a.archived).reduce((sum, a) => sum + accountBalance(a, upTo), 0)
+  const cutoff = `${month}-31`
+  const upTo = transactions.filter((tx) => tx.date <= cutoff)
+  return accounts
+    .filter(
+      (a) =>
+        (a.openingDate ?? '0000-01-01') <= cutoff &&
+        (!a.archived || (a.archivedAt !== undefined && a.archivedAt > cutoff))
+    )
+    .reduce(
+      (sum, a) =>
+        sum +
+        accountBalance(
+          a,
+          upTo.filter((tx) => tx.date >= (a.openingDate ?? '0000-01-01'))
+        ),
+      0
+    )
 }
 
 /** Net worth at the end of each of the given months (same order). */
@@ -128,6 +145,7 @@ export function detectRecurring(transactions: Transaction[], categories: Categor
   for (const tx of transactions) {
     if (tx.type !== 'expense') continue
     const note = tx.note.trim().toLowerCase()
+    if (!note && !tx.isRecurring) continue
     const key = `${tx.categoryId ?? ''}|${note}`
     const list = groups.get(key) ?? []
     list.push(tx)
@@ -157,11 +175,12 @@ export function detectRecurring(transactions: Transaction[], categories: Categor
   return results.sort((a, b) => b.amount - a.amount)
 }
 
-export type HealthBand = 'healthy' | 'good' | 'attention' | 'critical'
+export type HealthBand = 'healthy' | 'good' | 'attention' | 'critical' | 'insufficientData'
 
 export interface HealthScore {
   score: number
   band: HealthBand
+  factors?: { savings: number; budgets: number; trend: number }
 }
 
 /**
@@ -181,6 +200,10 @@ export function computeHealthScore(
   month: string
 ): HealthScore {
   const { income, expense } = monthTotals(transactions, month)
+  const history = new Set(
+    transactions.filter((tx) => tx.type === 'income' && tx.date <= `${month}-31`).map((tx) => monthKey(tx.date))
+  )
+  if (income <= 0 || history.size < 2) return { score: 0, band: 'insufficientData' }
   const savingsRate = income > 0 ? (income - expense) / income : 0
   const savingsScore = Math.max(0, Math.min(1, savingsRate / 0.2))
 
@@ -194,5 +217,101 @@ export function computeHealthScore(
 
   const score = Math.round(100 * (0.4 * savingsScore + 0.3 * adherence + 0.3 * trend))
   const band: HealthBand = score >= 75 ? 'healthy' : score >= 50 ? 'good' : score >= 25 ? 'attention' : 'critical'
-  return { score, band }
+  return {
+    score,
+    band,
+    factors: {
+      savings: Math.round(savingsScore * 100),
+      budgets: Math.round(adherence * 100),
+      trend: Math.round(trend * 100)
+    }
+  }
+}
+
+/** Sum of all actual consumption, whether charged to an account or a card. */
+export function consumptionTotal(transactions: Transaction[], month: string): number {
+  return transactions
+    .filter((tx) => tx.type === 'expense' && tx.categoryId && monthKey(tx.date) === month)
+    .reduce((sum, tx) => sum + tx.amount, 0)
+}
+
+export interface ForecastPoint {
+  date: string
+  balance: number
+  income: number
+  expenses: number
+}
+
+/** Explicit pending bills plus recurring income estimates; excludes paid and past obligations. */
+export function cashForecast(
+  openingBalance: number,
+  transactions: Transaction[],
+  bills: Bill[],
+  today: string,
+  days = 90,
+  cards: CreditCard[] = [],
+  plans: InstallmentPlan[] = []
+): ForecastPoint[] {
+  const points: ForecastPoint[] = []
+  const date = new Date(`${today}T12:00:00`)
+  let balance = openingBalance
+  const recurringIncome = new Map<string, Transaction>()
+  for (const tx of transactions.filter((t) => t.type === 'income' && t.isRecurring && t.date <= today)) {
+    const key = `${tx.accountId}|${tx.categoryId}|${tx.note.trim().toLowerCase()}`
+    if (!recurringIncome.has(key) || recurringIncome.get(key)!.date < tx.date) recurringIncome.set(key, tx)
+  }
+  const expectedBills = [...bills.filter((bill) => bill.status === 'pending')]
+  for (const card of cards.filter((c) => !c.archived)) {
+    const amount = cardOpenInvoice(card, transactions, today)
+    const dueDate = nextCardDue(card, today)
+    if (amount > 0 && !expectedBills.some((b) => b.cardId === card.id && b.dueDate === dueDate))
+      expectedBills.push({
+        id: `open-${card.id}`,
+        name: card.name,
+        amount,
+        dueDate,
+        status: 'pending',
+        recurring: false,
+        cardId: card.id
+      })
+  }
+  for (const plan of plans) {
+    const firstDue = planNextDue(plan, today)
+    if (!firstDue) continue
+    const first = new Date(`${firstDue}T12:00:00`)
+    for (let i = 0; i < plan.installmentsTotal - plan.installmentsPaid; i++) {
+      expectedBills.push({
+        id: `installment-${plan.id}-${i}`,
+        name: plan.name,
+        amount: plan.installmentAmount,
+        dueDate: isoForDay(first.getFullYear(), first.getMonth() + i, plan.dueDay),
+        status: 'pending',
+        recurring: false
+      })
+    }
+  }
+  for (const bill of bills.filter((b) => b.status === 'pending' && b.recurring && !b.cardId)) {
+    const due = new Date(`${bill.dueDate}T12:00:00`)
+    const horizon = new Date(`${today}T12:00:00`)
+    horizon.setDate(horizon.getDate() + days)
+    for (let step = 1; step <= 4; step++) {
+      const future = isoForDay(due.getFullYear(), due.getMonth() + step, due.getDate())
+      if (future > horizon.toISOString().slice(0, 10)) break
+      if (!expectedBills.some((b) => b.dueDate === future && b.name === bill.name))
+        expectedBills.push({ ...bill, dueDate: future })
+    }
+  }
+  for (let offset = 1; offset <= days; offset++) {
+    date.setDate(date.getDate() + 1)
+    const day = date.toISOString().slice(0, 10)
+    const income = [...recurringIncome.values()]
+      .filter((tx) => isoForDay(date.getFullYear(), date.getMonth(), Number(tx.date.slice(8, 10))) === day)
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    const expenses = expectedBills
+      .filter((bill) => bill.dueDate === day || (offset === 1 && bill.dueDate <= today))
+      .reduce((sum, bill) => sum + bill.amount, 0)
+    balance += income - expenses
+    points.push({ date: day, balance, income, expenses })
+  }
+  return points
 }

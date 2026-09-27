@@ -14,7 +14,8 @@ import { DrillRow, List } from '@/components/ui/list'
 import { Select } from '@/components/ui/select'
 import { useLang, useT, type TKey } from '@/i18n'
 import { formatCurrency } from '@/lib/format'
-import { MAX_AMOUNT, parseAmount } from '@/lib/validation'
+import { todayISO } from '@/lib/dates'
+import { isSaneDate, MAX_AMOUNT, parseAmount } from '@/lib/validation'
 import { useProfile } from '@/state/profile'
 import {
   accountBalance,
@@ -152,14 +153,17 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState<AccountType>(account?.type ?? 'checking')
   const [initialBalance, setInitialBalance] = useState(account ? String(account.initialBalance) : '0')
+  const [openingDate, setOpeningDate] = useState(account?.openingDate ?? todayISO())
   const [color, setColor] = useState(account?.color ?? PALETTE[2])
   const [nameError, setNameError] = useState<string | null>(null)
   const [balanceError, setBalanceError] = useState<string | null>(null)
+  const [openingError, setOpeningError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const submit = async (): Promise<void> => {
     setNameError(null)
     setBalanceError(null)
+    setOpeningError(null)
 
     if (!name.trim()) {
       setNameError(t('errors.nameRequired'))
@@ -176,10 +180,15 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
       setBalanceError(t('finance.amountTooLarge'))
       return
     }
+    if (!openingDate || !isSaneDate(openingDate) || openingDate > todayISO()) {
+      setOpeningError(t('finance.openingDateInvalid'))
+      return
+    }
     const input: AccountInput = {
       name: name.trim(),
       type,
       initialBalance: parsedBalance,
+      openingDate,
       color
     }
     setSubmitting(true)
@@ -228,6 +237,9 @@ function AccountForm({ account, onClose }: { account: Account | null; onClose: (
                 value={initialBalance}
                 onChange={(e) => setInitialBalance(e.target.value)}
               />
+            </Field>
+            <Field label={t('finance.openingDate')} error={openingError ?? undefined}>
+              <Input type="date" value={openingDate} onChange={(e) => setOpeningDate(e.target.value)} />
             </Field>
             <Field label={t('common.color')}>
               <ColorSwatches value={color} onChange={setColor} />

@@ -32,6 +32,11 @@ export async function updateCard(id: string, input: CardInput): Promise<SaveResu
   const { error } = await supabase.from('credit_cards').update(row).eq('id', id)
   if (error) return 'error'
   patch({ creditCards: state().creditCards.map((c) => (c.id === id ? { ...c, ...input } : c)) })
+  try {
+    await reconcileCardBills()
+  } catch (error) {
+    console.error('Could not reconcile card invoices; they will retry on the next load.', error)
+  }
   return 'ok'
 }
 
@@ -68,13 +73,22 @@ function dueForClosing(closingISO: string, dueDay: number): string {
   return sameMonth > closingISO ? sameMonth : isoForDay(c.getFullYear(), c.getMonth() + 1, dueDay)
 }
 
-/** Up to `count` closing dates strictly before `today`, most recent first. */
-function recentClosings(today: string, closingDay: number, count: number): string[] {
-  const d = parseISODate(today)
+/** All closings from the earliest purchase through today, including long absences. */
+function closedCycles(today: string, closingDay: number, earliest: string): string[] {
+  const start = parseISODate(earliest)
+  const end = parseISODate(today)
   const result: string[] = []
-  for (let i = 0; result.length < count && i <= count; i++) {
-    const iso = isoForDay(d.getFullYear(), d.getMonth() - i, closingDay)
-    if (iso < today) result.push(iso)
+  for (
+    let year = start.getFullYear(), month = start.getMonth();
+    year < end.getFullYear() || (year === end.getFullYear() && month <= end.getMonth());
+  ) {
+    const close = isoForDay(year, month, closingDay)
+    if (close < today && close >= earliest) result.push(close)
+    month++
+    if (month === 12) {
+      month = 0
+      year++
+    }
   }
   return result
 }
@@ -89,15 +103,15 @@ export function cardOpenInvoice(card: CreditCard, transactions: Transaction[], t
   return total
 }
 
-/** Next due date for a card's open invoice: the next due-day on-or-after today. */
+/** The open cycle is paid after its next closing date, possibly two months away. */
 export function nextCardDue(card: CreditCard, today: string = todayISO()): string {
-  const d = parseISODate(today)
-  const thisDue = isoForDay(d.getFullYear(), d.getMonth(), card.dueDay)
-  return thisDue >= today ? thisDue : isoForDay(d.getFullYear(), d.getMonth() + 1, card.dueDay)
+  const last = parseISODate(lastClosingDate(today, card.closingDay))
+  const nextClosing = isoForDay(last.getFullYear(), last.getMonth() + 1, card.closingDay)
+  return dueForClosing(nextClosing, card.dueDay)
 }
 
 /**
- * Reconciles each active card's recently-closed cycles with the `bills` table.
+ * Reconciles every closed cycle since the first purchase with the `bills` table.
  *
  * A card invoice is the ONLY derived total this app persists, because a bill
  * has to exist as a row to be paid, alerted on and marked off. That makes it
@@ -112,50 +126,79 @@ export function nextCardDue(card: CreditCard, today: string = todayISO()): strin
  *   • bill is already PAID → left untouched. That records what was actually
  *     paid, which is history, not a derived value.
  *
- * A short look-back keeps a never-opened account from back-filling ancient
- * history all at once.
+ * Paid invoices remain immutable history. Pending cycles follow edits immediately.
  */
 export async function syncCardBills(cards: CreditCard[], transactions: Transaction[], bills: Bill[]): Promise<Bill[]> {
   const today = todayISO()
-  let result = bills
+  let result = [...bills]
 
   for (const card of cards) {
-    if (card.archived) continue
-    for (const closing of recentClosings(today, card.closingDay, 2)) {
+    const purchases = transactions.filter((tx) => tx.type === 'expense' && tx.cardId === card.id)
+    const earliest = purchases.map((tx) => tx.date).sort()[0]
+    const closings = earliest ? closedCycles(today, card.closingDay, earliest) : []
+    const valid = new Set(closings)
+    const validDues = new Set(closings.map((closing) => dueForClosing(closing, card.dueDay)))
+
+    for (const closing of closings) {
       const c = parseISODate(closing)
-      const cycleStart = isoForDay(c.getFullYear(), c.getMonth() - 1, card.closingDay)
-      let total = 0
-      for (const tx of transactions) {
-        if (tx.type === 'expense' && tx.cardId === card.id && tx.date > cycleStart && tx.date <= closing) {
-          total += tx.amount
-        }
-      }
+      const start = isoForDay(c.getFullYear(), c.getMonth() - 1, card.closingDay)
+      const total = purchases
+        .filter((tx) => tx.date > start && tx.date <= closing)
+        .reduce((sum, tx) => sum + tx.amount, 0)
       const due = dueForClosing(closing, card.dueDay)
-      const existing = result.find((b) => b.cardId === card.id && b.dueDate === due)
-
+      const existing = result.find(
+        (b) => b.cardId === card.id && (b.cycleClose === closing || (!b.cycleClose && b.dueDate === due))
+      )
       if (existing?.status === 'paid') continue
-
-      if (!existing) {
-        if (total <= 0) continue
+      if (total <= 0) {
+        if (existing) {
+          const { error } = await supabase.from('bills').delete().eq('id', existing.id)
+          if (error) throw error
+          result = result.filter((b) => b.id !== existing.id)
+        }
+      } else if (!existing) {
         const input: BillInput = {
           name: card.name,
           amount: total,
           dueDate: due,
           status: 'pending',
           recurring: false,
-          cardId: card.id
+          cardId: card.id,
+          cycleClose: closing
         }
         const id = newId()
         const { error } = await supabase.from('bills').insert(billRow(id, input))
-        if (!error) result = [...result, { ...input, id }]
-      } else if (total <= 0) {
-        const { error } = await supabase.from('bills').delete().eq('id', existing.id)
-        if (!error) result = result.filter((b) => b.id !== existing.id)
-      } else if (existing.amount !== total) {
-        const { error } = await supabase.from('bills').update({ amount: total }).eq('id', existing.id)
-        if (!error) result = result.map((b) => (b.id === existing.id ? { ...b, amount: total } : b))
+        if (error) throw error
+        result.push({ ...input, id })
+      } else if (existing.amount !== total || existing.dueDate !== due || existing.cycleClose !== closing) {
+        const { error } = await supabase
+          .from('bills')
+          .update({ amount: total, due_date: due, cycle_close: closing, name: card.name })
+          .eq('id', existing.id)
+        if (error) throw error
+        result = result.map((b) =>
+          b.id === existing.id ? { ...b, amount: total, dueDate: due, cycleClose: closing, name: card.name } : b
+        )
       }
+    }
+    // A changed closing day can make an old pending cycle obsolete.
+    for (const stale of result.filter(
+      (b) =>
+        b.cardId === card.id &&
+        b.status === 'pending' &&
+        (b.cycleClose ? !valid.has(b.cycleClose) : !validDues.has(b.dueDate))
+    )) {
+      const { error } = await supabase.from('bills').delete().eq('id', stale.id)
+      if (error) throw error
+      result = result.filter((b) => b.id !== stale.id)
     }
   }
   return result
+}
+
+/** Reconcile after purchases and card configuration changes, without waiting for a reload. */
+export async function reconcileCardBills(): Promise<void> {
+  const { creditCards, transactions, bills } = state()
+  const next = await syncCardBills(creditCards, transactions, bills)
+  patch({ bills: next })
 }

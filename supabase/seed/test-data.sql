@@ -121,6 +121,8 @@ begin
     (acc_cash,     uid, 'Wallet',        'cash',        150.00, '#fbbf24', false),
     (acc_invest,   uid, 'Investments',   'investment', 5000.00, '#a78bfa', false);
 
+  update public.accounts set opening_date = (month_start - interval '5 months')::date where user_id = uid;
+
   -- ---- credit card (issuing account is display-only; closes on the 20th, due the 10th) ----
   insert into public.credit_cards (id, user_id, name, issuing_account_id, closing_day, due_day, credit_limit, color, archived) values
     (card_nubank, uid, 'Nubank', acc_checking, 20, 10, 5000.00, '#c084fc', false);
@@ -134,7 +136,7 @@ begin
     installments_total, installments_paid, paid_as_of, due_day
   ) values (
     loan_car, uid, acc_checking, 'Financiamento do carro',
-    48000.00, 1000.00, 48, 12, (current_date - interval '3 months')::date, 15
+    48000.00, 1000.00, 48, 12, current_date, 15
   );
 
   insert into public.consortiums (
@@ -142,7 +144,7 @@ begin
     installments_total, installments_paid, paid_as_of, contemplated, due_day
   ) values (
     cons_house, uid, acc_checking, 'Consórcio imóvel',
-    120000.00, 1250.00, 96, 30, (current_date - interval '3 months')::date, false, 10
+    120000.00, 1250.00, 96, 30, current_date, false, 10
   );
 
   -- ---- categories ----
@@ -222,10 +224,14 @@ begin
     (uid, cat_shopping,  120.00),
     (uid, cat_subs,       40.00);
 
+  update public.budgets set effective_from = (month_start - interval '5 months')::date where user_id = uid;
+
   -- ---- flag subscriptions as recurring (explicit override for the dashboard card;
   --       the monthly rent/utilities repeats are also caught heuristically) ----
   update public.transactions set is_recurring = true
     where user_id = uid and category_id = cat_subs;
+  update public.transactions set is_recurring = true
+    where user_id = uid and category_id = cat_salary;
 
   -- ---- savings goals (one account-linked, two manually tracked) ----
   --   Emergency fund tracks the Savings account (≈11k of 15k target);

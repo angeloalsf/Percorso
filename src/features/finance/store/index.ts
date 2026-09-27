@@ -20,6 +20,8 @@ export { addCard, cardOpenInvoice, deleteCard, nextCardDue, setCardArchived, upd
 export { addCategory, deleteCategory, seedCategories, updateCategory, type CategoryInput } from './categories'
 export {
   computeHealthScore,
+  cashForecast,
+  consumptionTotal,
   computeInsights,
   detectRecurring,
   monthTotals,
@@ -41,6 +43,7 @@ export {
   installmentsPaidNow,
   planNextDue,
   planRemaining,
+  payPlanInstallment,
   updateConsortium,
   updateLoan,
   type ConsortiumInput,
@@ -66,4 +69,4 @@ export type {
   Transaction,
   TransactionType
 } from './types'
-export { upsertBudget, deleteBudget } from './budgets'
+export { upsertBudget, deleteBudget, budgetLimitAt } from './budgets'

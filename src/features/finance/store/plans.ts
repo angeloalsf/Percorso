@@ -2,13 +2,10 @@ import { isoForDay, parseISODate, todayISO } from '@/lib/dates'
 import { newId } from '@/lib/id'
 import { supabase } from '@/lib/supabase'
 import { patch, state } from './store'
+import { rowToTransaction } from './rows'
 import type { Consortium, DeleteResult, InstallmentPlan, Loan, SaveResult } from './types'
 
-/*
- * See the InstallmentPlan doc comment: list/CRUD only, no bill generation and
- * no payment linking. Both tables share a shape, so the row builder and the
- * progress derivation are shared and only `contemplated` differs.
- */
+/* Both tables share a shape; progress reflects confirmed payments only. */
 
 export type LoanInput = Omit<Loan, 'id'>
 export type ConsortiumInput = Omit<Consortium, 'id'>
@@ -27,23 +24,8 @@ function planRow(id: string, input: LoanInput) {
   }
 }
 
-/**
- * Installments paid as of `today`: the stored baseline plus one for every
- * `dueDay` that has come round since `paidAsOf`, capped at the total. This is
- * what every progress bar reads — `installmentsPaid` alone goes stale.
- */
-export function installmentsPaidNow(plan: InstallmentPlan, today: string = todayISO()): number {
-  if (today <= plan.paidAsOf) return plan.installmentsPaid
-  const from = parseISODate(plan.paidAsOf)
-  const to = parseISODate(today)
-  const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
-  // Count the due dates falling in (paidAsOf, today].
-  let elapsed = 0
-  for (let i = 0; i <= months; i++) {
-    const due = isoForDay(from.getFullYear(), from.getMonth() + i, plan.dueDay)
-    if (due > plan.paidAsOf && due <= today) elapsed++
-  }
-  return Math.min(plan.installmentsTotal, plan.installmentsPaid + elapsed)
+export function installmentsPaidNow(plan: InstallmentPlan, _today: string = todayISO()): number {
+  return plan.installmentsPaid
 }
 
 /** Remaining balance: unpaid installments × the installment amount. */
@@ -52,12 +34,39 @@ export function planRemaining(plan: InstallmentPlan, today?: string): number {
   return Math.max(0, (plan.installmentsTotal - paid) * plan.installmentAmount)
 }
 
-/** Next due date: the next `dueDay` on-or-after today. Null once fully paid. */
+/** Earliest unpaid due date, including overdue installments. */
 export function planNextDue(plan: InstallmentPlan, today: string = todayISO()): string | null {
   if (installmentsPaidNow(plan, today) >= plan.installmentsTotal) return null
-  const d = parseISODate(today)
-  const thisMonth = isoForDay(d.getFullYear(), d.getMonth(), plan.dueDay)
-  return thisMonth >= today ? thisMonth : isoForDay(d.getFullYear(), d.getMonth() + 1, plan.dueDay)
+  const baseline = parseISODate(plan.paidAsOf)
+  const first = isoForDay(baseline.getFullYear(), baseline.getMonth(), plan.dueDay)
+  return first > plan.paidAsOf ? first : isoForDay(baseline.getFullYear(), baseline.getMonth() + 1, plan.dueDay)
+}
+
+export async function payPlanInstallment(
+  kind: 'loan' | 'consortium',
+  planId: string,
+  accountId: string,
+  paymentKey: string
+): Promise<SaveResult> {
+  const { data: txId, error } = await supabase.rpc('pay_plan_installment', {
+    p_kind: kind,
+    p_plan_id: planId,
+    p_account_id: accountId,
+    p_payment_key: paymentKey,
+    p_payment_date: todayISO()
+  })
+  if (error || !txId) return 'error'
+  const { data: tx } = await supabase.from('transactions').select('*').eq('id', txId).single()
+  if (state().transactions.some((t) => t.id === txId)) return 'ok'
+  if (tx) patch({ transactions: [...state().transactions, rowToTransaction(tx)] })
+  else return 'error'
+  const key = kind === 'loan' ? 'loans' : 'consortiums'
+  patch({
+    [key]: state()[key].map((p) =>
+      p.id === planId ? { ...p, installmentsPaid: p.installmentsPaid + 1, paidAsOf: todayISO() } : p
+    )
+  })
+  return 'ok'
 }
 
 export async function addLoan(input: LoanInput): Promise<SaveResult> {

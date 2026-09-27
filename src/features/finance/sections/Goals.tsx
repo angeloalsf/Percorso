@@ -110,8 +110,12 @@ type TrackMode = 'account' | 'manual'
 
 function GoalForm({ goal, onClose }: { goal: Goal | null; onClose: () => void }) {
   const t = useT()
-  const { accounts } = useFinanceStore()
-  const activeAccounts = accounts.filter((a) => !a.archived || a.id === goal?.accountId)
+  const { accounts, goals } = useFinanceStore()
+  const activeAccounts = accounts.filter(
+    (a) =>
+      (!a.archived || a.id === goal?.accountId) &&
+      !goals.some((other) => other.id !== goal?.id && other.accountId === a.id)
+  )
 
   const [name, setName] = useState(goal?.name ?? '')
   const [targetAmount, setTargetAmount] = useState(goal ? String(goal.targetAmount) : '')

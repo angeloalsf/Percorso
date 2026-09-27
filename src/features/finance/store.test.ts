@@ -247,20 +247,15 @@ describe('installmentsPaidNow', () => {
     expect(installmentsPaidNow(plan({ installmentsPaid: 3, paidAsOf: '2026-01-10' }), '2026-01-10')).toBe(3)
   })
 
-  it('advances one installment per elapsed due day', () => {
+  it('does not infer payments from elapsed due dates', () => {
     const p = plan({ installmentsPaid: 0, paidAsOf: '2026-01-10', dueDay: 10 })
-    expect(installmentsPaidNow(p, '2026-04-10')).toBe(3)
+    expect(installmentsPaidNow(p, '2026-04-10')).toBe(0)
+    expect(planRemaining(p, '2026-04-10')).toBe(p.installmentsTotal * p.installmentAmount)
   })
 
-  it('does not count a due day that has not arrived yet this month', () => {
-    const p = plan({ installmentsPaid: 0, paidAsOf: '2026-01-10', dueDay: 10 })
-    expect(installmentsPaidNow(p, '2026-02-09')).toBe(0)
-    expect(installmentsPaidNow(p, '2026-02-10')).toBe(1)
-  })
-
-  it('caps at installmentsTotal even if more due dates have elapsed', () => {
-    const p = plan({ installmentsPaid: 0, paidAsOf: '2020-01-10', dueDay: 10, installmentsTotal: 12 })
-    expect(installmentsPaidNow(p, '2026-07-25')).toBe(12)
+  it('only advances after the confirmed count is updated', () => {
+    const p = plan({ installmentsPaid: 3, paidAsOf: '2026-04-10' })
+    expect(installmentsPaidNow(p, '2026-07-25')).toBe(3)
   })
 })
 
@@ -279,12 +274,12 @@ describe('planRemaining', () => {
 describe('planNextDue', () => {
   it('returns the next due day on-or-after today, this month', () => {
     const p = plan({ dueDay: 28, installmentsPaid: 0, paidAsOf: '2026-06-01', installmentsTotal: 12 })
-    expect(planNextDue(p, '2026-07-25')).toBe('2026-07-28')
+    expect(planNextDue(p, '2026-07-25')).toBe('2026-06-28')
   })
 
   it('rolls to next month when this month due day has passed', () => {
     const p = plan({ dueDay: 10, installmentsPaid: 0, paidAsOf: '2026-06-01', installmentsTotal: 12 })
-    expect(planNextDue(p, '2026-07-25')).toBe('2026-08-10')
+    expect(planNextDue(p, '2026-07-25')).toBe('2026-06-10')
   })
 
   it('returns null once the plan is fully paid', () => {
@@ -324,12 +319,12 @@ describe('cardOpenInvoice', () => {
 })
 
 describe('nextCardDue', () => {
-  it('returns this month due day when it is on-or-after today', () => {
-    expect(nextCardDue(card({ dueDay: 27 }), '2026-07-25')).toBe('2026-07-27')
+  it('does not treat the open invoice as a bill due before its next closing', () => {
+    expect(nextCardDue(card({ closingDay: 20, dueDay: 27 }), '2026-07-25')).toBe('2026-08-27')
   })
 
   it('rolls to next month once the due day has passed', () => {
-    expect(nextCardDue(card({ dueDay: 27 }), '2026-07-28')).toBe('2026-08-27')
+    expect(nextCardDue(card({ closingDay: 20, dueDay: 27 }), '2026-07-28')).toBe('2026-08-27')
   })
 })
 
@@ -384,12 +379,13 @@ describe('computeHealthScore', () => {
   it('scores a high savings rate with no budgets and a growing net worth as healthy', () => {
     const a = account({ id: 'a', initialBalance: 1000 })
     const txs = [
+      tx({ type: 'income', accountId: 'a', amount: 100, date: '2026-06-01' }),
       tx({ type: 'income', accountId: 'a', amount: 1000, date: '2026-07-01' }),
       tx({ type: 'expense', accountId: 'a', amount: 500, date: '2026-07-02' })
     ]
     const result = computeHealthScore([a], txs, [], '2026-07')
     // savingsScore=1 (50% saved, capped at the 20% full-marks threshold), adherence=0.7 (no budgets),
-    // trend=1 (now=1500 vs. past=1000, the initial balance with no tx 3 months prior)
+    // trend=1 (net worth grew vs. three months prior)
     expect(result.score).toBe(Math.round(100 * (0.4 * 1 + 0.3 * 0.7 + 0.3 * 1)))
     expect(result.band).toBe('healthy')
   })
@@ -401,12 +397,15 @@ describe('computeHealthScore', () => {
     const result = computeHealthScore([a], txs, budgets, '2026-07')
     // savingsScore=0 (no income), adherence=0 (over budget), trend=0 (now=-150 vs. past=0)
     expect(result.score).toBe(0)
-    expect(result.band).toBe('critical')
+    expect(result.band).toBe('insufficientData')
   })
 
   it('rewards net worth growth vs. 3 months prior', () => {
     const a = account({ id: 'a', initialBalance: 1000 })
-    const txs = [tx({ type: 'income', accountId: 'a', amount: 5000, date: '2026-07-01' })]
+    const txs = [
+      tx({ type: 'income', accountId: 'a', amount: 10, date: '2026-06-01' }),
+      tx({ type: 'income', accountId: 'a', amount: 5000, date: '2026-07-01' })
+    ]
     const result = computeHealthScore([a], txs, [], '2026-07')
     // now (6000) > past*1.01 (1010) → trend=1
     expect(result.score).toBeGreaterThan(computeHealthScore([a], [], [], '2026-07').score)

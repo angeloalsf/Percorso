@@ -26,15 +26,17 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { Select } from '@/components/ui/select'
 import { useLang, useT, type Translator } from '@/i18n'
-import { currentMonthKey, lastNMonthKeys, monthPacing, shiftMonthKey } from '@/lib/dates'
+import { currentMonthKey, lastNMonthKeys, monthPacing, shiftMonthKey, todayISO } from '@/lib/dates'
 import { formatCurrency, formatDate, formatMonthShort } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { CURRENCIES, useProfile } from '@/state/profile'
 import {
   accountBalance,
+  cashForecast,
   billAlerts,
   computeHealthScore,
   computeInsights,
+  consumptionTotal,
   detectRecurring,
   goalProgress,
   markBillPaid,
@@ -51,12 +53,14 @@ import {
 import { BillBadge, PayBillDialog } from '../bills/BillUI'
 
 const BAND_COLOR: Record<HealthBand, string> = {
+  insufficientData: 'var(--muted-foreground)',
   healthy: 'var(--success)',
   good: 'var(--primary)',
   attention: 'var(--warning)',
   critical: 'var(--destructive)'
 }
 const BAND_KEY = {
+  insufficientData: 'finance.healthInsufficient',
   healthy: 'finance.healthHealthy',
   good: 'finance.healthGood',
   attention: 'finance.healthAttention',
@@ -66,10 +70,22 @@ const BAND_KEY = {
 export function Dashboard() {
   const t = useT()
   const lang = useLang()
-  const { accounts, categories, transactions, budgets, goals, bills, setPendingTxFilter } = useFinanceStore()
+  const {
+    accounts,
+    categories,
+    transactions,
+    budgets,
+    goals,
+    bills,
+    creditCards,
+    loans,
+    consortiums,
+    setPendingTxFilter
+  } = useFinanceStore()
   const currency = useProfile((s) => s.currency)
   const money = (v: number): string => formatCurrency(v, currency, lang)
   const [payingBill, setPayingBill] = useState<Bill | null>(null)
+  const [forecastDays, setForecastDays] = useState(30)
 
   const month = currentMonthKey()
   const prevMonth = shiftMonthKey(month, -1)
@@ -78,7 +94,18 @@ export function Dashboard() {
   const prevTotals = useMemo(() => monthTotals(transactions, prevMonth), [transactions, prevMonth])
 
   const netWorth = useMemo(
-    () => accounts.filter((a) => !a.archived).reduce((sum, a) => sum + accountBalance(a, transactions), 0),
+    () =>
+      accounts
+        .filter((a) => !a.archived)
+        .reduce(
+          (sum, a) =>
+            sum +
+            accountBalance(
+              a,
+              transactions.filter((tx) => tx.date <= todayISO())
+            ),
+          0
+        ),
     [accounts, transactions]
   )
   const prevNetWorth = useMemo(
@@ -89,12 +116,18 @@ export function Dashboard() {
   const net = totals.income - totals.expense
   const prevNet = prevTotals.income - prevTotals.expense
 
-  // Month-end projection: current balance + avg daily net so far × remaining days.
+  // Project the month's result (cash flow), not account wealth.
   const projection = useMemo(() => {
     const { day, remaining } = monthPacing()
     const avgDaily = day > 0 ? net / day : 0
-    return netWorth + avgDaily * remaining
-  }, [netWorth, net])
+    return net + avgDaily * remaining
+  }, [net])
+  const forecast = useMemo(
+    () =>
+      cashForecast(netWorth, transactions, bills, todayISO(), forecastDays, creditCards, [...loans, ...consortiums]),
+    [netWorth, transactions, bills, forecastDays, creditCards, loans, consortiums]
+  )
+  const forecastEnd = forecast.at(-1)
 
   const insights = useMemo(
     () => computeInsights(transactions, categories, budgets, month),
@@ -251,10 +284,64 @@ export function Dashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,320px)_1fr]">
-        <HealthCard score={health.score} band={health.band} t={t} />
-        <InsightsCard insights={insights} t={t} />
+      <div className={cn('grid grid-cols-1 gap-3', insights.length > 0 && 'lg:grid-cols-[minmax(0,320px)_1fr]')}>
+        <HealthCard health={health} t={t} />
+        {insights.length > 0 && <InsightsCard insights={insights} t={t} />}
       </div>
+
+      <Card>
+        <CardTitle>
+          <TrendingUp />
+          {t('finance.forecastTitle')}
+          <CardTitleSub>{t('finance.forecastSub')}</CardTitleSub>
+        </CardTitle>
+        <div className="mb-3 flex gap-1.5" aria-label={t('finance.forecastTitle')}>
+          {[30, 60, 90].map((days) => (
+            <Button
+              key={days}
+              size="sm"
+              variant={forecastDays === days ? 'default' : 'ghost'}
+              onClick={() => setForecastDays(days)}
+            >
+              {days}d
+            </Button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
+          <div>
+            {t('finance.forecastAvailable')}
+            <strong className="block tabular">{money(netWorth)}</strong>
+          </div>
+          <div>
+            {t('finance.forecastBills')}
+            <strong className="block tabular">−{money(forecast.reduce((s, p) => s + p.expenses, 0))}</strong>
+          </div>
+          <div>
+            {t('finance.forecastIncome')}
+            <strong className="block tabular">+{money(forecast.reduce((s, p) => s + p.income, 0))}</strong>
+          </div>
+          <div>
+            {t('finance.forecastBalance')}
+            <strong className="block tabular">{money(forecastEnd?.balance ?? netWorth)}</strong>
+          </div>
+        </div>
+        <div className="mt-4">
+          <LineChart
+            labels={forecast
+              .filter((_, i) => i % 5 === 4 || i === forecast.length - 1)
+              .map((p) => formatDate(p.date, lang, 'short'))}
+            series={[
+              {
+                name: t('finance.forecastBalance'),
+                color: 'var(--primary)',
+                values: forecast.filter((_, i) => i % 5 === 4 || i === forecast.length - 1).map((p) => p.balance)
+              }
+            ]}
+            height={150}
+            formatValue={money}
+          />
+        </div>
+      </Card>
 
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <MetricCard
@@ -338,7 +425,9 @@ export function Dashboard() {
         <CardTitle>
           <Activity />
           {t('finance.spendingByCategory')}
-          <CardTitleSub>{t('common.thisMonth')}</CardTitleSub>
+          <CardTitleSub>
+            {t('finance.consumptionMonth')} · {money(consumptionTotal(transactions, month))}
+          </CardTitleSub>
         </CardTitle>
         {donut.length > 0 ? (
           <DonutChart
@@ -495,7 +584,8 @@ function MetricCard({
   )
 }
 
-function HealthCard({ score, band, t }: { score: number; band: HealthBand; t: Translator }) {
+function HealthCard({ health, t }: { health: ReturnType<typeof computeHealthScore>; t: Translator }) {
+  const { score, band, factors } = health
   const color = BAND_COLOR[band]
   return (
     <Card>
@@ -504,20 +594,25 @@ function HealthCard({ score, band, t }: { score: number; band: HealthBand; t: Tr
         {t('finance.healthTitle')}
         <CardTitleSub>{t('finance.healthSub')}</CardTitleSub>
       </CardTitle>
-      <div className="flex items-center gap-4">
-        <div className="tabular text-3xl leading-none font-bold" style={{ color }}>
-          {score}
-          <span className="text-base text-muted-foreground">/100</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold" style={{ color }}>
-            {t(BAND_KEY[band])}
+      {band === 'insufficientData' ? (
+        <p className="text-sm text-muted-foreground">{t('finance.healthInsufficient')}</p>
+      ) : (
+        <div className="flex items-center gap-4">
+          <div className="tabular text-3xl leading-none font-bold" style={{ color }}>
+            {score}
+            <span className="text-base text-muted-foreground">/100</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold" style={{ color }}>
+              {t(BAND_KEY[band])}
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full" style={{ width: `${score}%`, background: color }} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {factors && <p className="mt-3 text-xs text-muted-foreground">{t('finance.healthFactors', factors)}</p>}
     </Card>
   )
 }

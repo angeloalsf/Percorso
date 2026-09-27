@@ -18,8 +18,10 @@ export function rowToAccount(r: any): Account {
     name: r.name,
     type: r.type,
     initialBalance: Number(r.initial_balance),
+    openingDate: r.opening_date ?? undefined,
     color: r.color,
-    archived: r.archived
+    archived: r.archived,
+    archivedAt: r.archived_at ?? undefined
   }
 }
 
@@ -38,12 +40,18 @@ export function rowToTransaction(r: any): Transaction {
     toAccountId: r.to_account_id ?? undefined,
     categoryId: r.category_id ?? undefined,
     note: r.note,
-    isRecurring: r.is_recurring ?? false
+    isRecurring: r.is_recurring ?? false,
+    importReference: r.import_reference ?? undefined
   }
 }
 
 export function rowToBudget(r: any): Budget {
-  return { id: r.id, categoryId: r.category_id, monthlyLimit: Number(r.monthly_limit) }
+  return {
+    id: r.id,
+    categoryId: r.category_id,
+    monthlyLimit: Number(r.monthly_limit),
+    effectiveFrom: r.effective_from ?? undefined
+  }
 }
 
 export function rowToGoal(r: any): Goal {
@@ -65,7 +73,10 @@ export function rowToBill(r: any): Bill {
     dueDate: r.due_date,
     status: r.status,
     recurring: r.recurring ?? false,
-    cardId: r.card_id ?? undefined
+    cardId: r.card_id ?? undefined,
+    cycleClose: r.cycle_close ?? undefined,
+    recurrenceId: r.recurrence_id ?? undefined,
+    paymentTransactionId: r.payment_transaction_id ?? undefined
   }
 }
 

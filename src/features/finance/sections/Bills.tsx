@@ -117,18 +117,22 @@ export function Bills() {
                       <Check />
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(bill)}>
-                    <Pencil />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={t('common.delete')}
-                    onClick={() => setDeleting(bill)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  {!bill.cardId && (
+                    <Button variant="ghost" size="icon" aria-label={t('common.edit')} onClick={() => setEditing(bill)}>
+                      <Pencil />
+                    </Button>
+                  )}
+                  {!bill.cardId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={t('common.delete')}
+                      onClick={() => setDeleting(bill)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  )}
                 </div>
               </ListRow>
             )
