@@ -26,9 +26,13 @@ test('desktop panes collapse and reopen from their controls', async ({ page }) =
   await expect(dayView).toBeVisible()
 
   await rail.getByRole('button', { name: 'Finances' }).click()
-  await rail.getByRole('button', { name: 'Calendar' }).click()
+  await rail.getByRole('button', { name: 'Routine' }).click()
   await expect(explorer).toBeVisible()
-  await expect(page).toHaveURL(/\/calendar/)
+  await expect(page).toHaveURL(/\/routine/)
+  const routineCalendar = dayView.getByRole('region', { name: 'Routine by day' })
+  await expect(routineCalendar).toBeVisible()
+  await routineCalendar.locator('button[aria-label*=":"]').first().click()
+  await expect(page).toHaveURL(/\/routine\?date=\d{4}-\d{2}-01/)
 })
 
 test('main content returns to the top when changing pages and finance sections', async ({ page }) => {

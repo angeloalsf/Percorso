@@ -65,6 +65,7 @@ export const ptBR: typeof en = {
     home: 'Início',
     finances: 'Finanças',
     calendar: 'Rotina',
+    routine: 'Rotina',
     settings: 'Ajustes'
   },
   home: {
@@ -133,8 +134,10 @@ export const ptBR: typeof en = {
   },
   routine: {
     title: 'Rotina',
-    intro:
-      'Reserve espaço para o que importa. Programe hábitos, marque cada dia e acompanhe seu progresso no calendário.',
+    intro: 'Organize e acompanhe seus hábitos dia a dia.',
+    dayCalendar: 'Rotina por dia',
+    complete: 'Completo',
+    partial: 'Parcial',
     addHabit: 'Novo hábito',
     editHabit: 'Editar hábito',
     yourHabits: 'Seus hábitos',

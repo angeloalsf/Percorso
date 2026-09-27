@@ -1,8 +1,11 @@
 import { useEffect, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Check, Target, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { billAlerts, goalProgress, useFinanceStore } from '@/features/finance/store'
 import { completionKey, scheduledHabits } from '@/features/routine/dates'
+import { RoutineMiniCalendar } from '@/features/routine/RoutineMiniCalendar'
+import { routineDate } from '@/features/routine/routineDate'
 import { useRoutineStore } from '@/features/routine/store'
 import { useLang, useT } from '@/i18n'
 import { currentMonthKey, todayISO } from '@/lib/dates'
@@ -20,10 +23,13 @@ export function DesktopDayPanel({
   onClose: () => void
 }) {
   const t = useT()
+  const navigate = useNavigate()
+  const { pathname, search } = useLocation()
   const lang = useLang()
   const currency = useProfile((s) => s.currency)
   const month = currentMonthKey()
   const today = todayISO()
+  const selected = pathname === '/routine' ? routineDate(new URLSearchParams(search).get('date')) : today
   const { habits, changes, completions, loadedMonths, status: routineStatus, savingKey } = useRoutineStore()
   const goals = useFinanceStore((s) => s.goals)
   const accounts = useFinanceStore((s) => s.accounts)
@@ -155,6 +161,14 @@ export function DesktopDayPanel({
             </ul>
           </section>
         )}
+
+        <div className="border-t pt-5">
+          <RoutineMiniCalendar
+            userId={userId}
+            selected={selected}
+            onSelect={(date) => navigate(`/routine?date=${date}`)}
+          />
+        </div>
       </div>
     </aside>
   )

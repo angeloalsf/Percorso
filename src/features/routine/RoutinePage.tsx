@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Archive, Check, ChevronLeft, ChevronRight, CircleCheck, CircleX, Pencil, Plus, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Archive, Check, CircleCheck, CircleX, Pencil, Plus, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
@@ -8,13 +9,14 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { monthDays } from '@/features/calendar/dates'
 import { useCalendarStore, type DayStatus } from '@/features/calendar/store'
 import { useLang, useT } from '@/i18n'
 import { LOCALE_TAGS } from '@/i18n/config'
-import { currentMonthKey, parseISODate, shiftMonthKey, todayISO } from '@/lib/dates'
+import { parseISODate, todayISO } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { completionKey, currentWeekdays, dayProgress, routineMonthSummary, scheduledHabits, type Habit } from './dates'
+import { completionKey, currentWeekdays, dayProgress, scheduledHabits, type Habit } from './dates'
+import { RoutineMiniCalendar } from './RoutineMiniCalendar'
+import { routineDate } from './routineDate'
 import { useRoutineStore } from './store'
 
 const weekdays = [0, 1, 2, 3, 4, 5, 6]
@@ -24,9 +26,10 @@ export function RoutinePage() {
   const lang = useLang()
   const locale = LOCALE_TAGS[lang]
   const { session } = useAuth()
-  const [month, setMonth] = useState(currentMonthKey)
-  const [selected, setSelected] = useState<string | null>(todayISO)
-  const [note, setNote] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selected = routineDate(searchParams.get('date'))
+  const month = selected.slice(0, 7)
+  const [noteEdit, setNoteEdit] = useState({ date: '', value: '' })
   const [clockToday, setClockToday] = useState(todayISO)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Habit | null>(null)
@@ -52,36 +55,19 @@ export function RoutinePage() {
     }
   }, [])
 
-  const days = useMemo(() => monthDays(month), [month])
-  const summary = useMemo(
-    () => routineMonthSummary(month, habits, changes, completions, entries, clockToday),
-    [month, habits, changes, completions, entries, clockToday]
-  )
   const active = habits.filter((habit) => !habit.archivedOn)
-  const selectedHabits = selected ? scheduledHabits(selected, habits, changes) : []
-  const selectedProgress = selected
-    ? dayProgress(selected, habits, changes, completions, entries[selected], clockToday)
-    : null
-  const selectedEntry = selected ? entries[selected] : undefined
+  const selectedHabits = scheduledHabits(selected, habits, changes)
+  const selectedProgress = dayProgress(selected, habits, changes, completions, entries[selected], clockToday)
+  const selectedEntry = entries[selected]
+  const note = noteEdit.date === selected ? noteEdit.value : (selectedEntry?.note ?? '')
   const loaded = legacyLoaded && Boolean(loadedMonths[month]) && status === 'ready'
   const error = legacyError || Boolean(errorMonths[month]) || status === 'error'
-  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(
-    parseISODate(`${month}-01`)
-  )
-  const selectedLabel = selected
-    ? new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(parseISODate(selected))
-    : ''
+  const selectedLabel = new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(parseISODate(selected))
   const dayLabel = (index: number, width: 'short' | 'narrow' = 'short') =>
     new Intl.DateTimeFormat(locale, { weekday: width }).format(new Date(2024, 0, 1 + index)).replace('.', '')
 
-  const changeMonth = (delta: number) => {
-    setMonth((value) => shiftMonthKey(value, delta))
-    setSelected(null)
-    setNote('')
-  }
   const selectDay = (date: string) => {
-    setSelected(date)
-    setNote(entries[date]?.note ?? '')
+    setSearchParams({ date })
   }
   const toggle = async (habit: Habit) => {
     if (!selected || !session) return
@@ -100,7 +86,7 @@ export function RoutinePage() {
       .getState()
       .saveDay(selected, dayStatus, dayStatus ? note.trim() : '', session.user.id)
     if (!ok) toast.error(t('toasts.saveError'))
-    else if (!dayStatus) setNote('')
+    else if (!dayStatus) setNoteEdit({ date: selected, value: '' })
   }
 
   return (
@@ -117,26 +103,18 @@ export function RoutinePage() {
           {t('routine.addHabit')}
         </Button>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)] lg:items-start">
-        <Card className="min-w-0 p-3 sm:p-5">
-          <div className="mb-5 flex items-center justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold capitalize" aria-live="polite">
-                {monthLabel}
-              </h2>
-              <p className="text-xs text-muted-foreground">{t('calendar.monthSummary', summary)}</p>
-            </div>
-            <div className="flex gap-1">
-              <Button size="icon" variant="ghost" aria-label={t('calendar.previous')} onClick={() => changeMonth(-1)}>
-                <ChevronLeft />
-              </Button>
-              <Button size="icon" variant="ghost" aria-label={t('calendar.next')} onClick={() => changeMonth(1)}>
-                <ChevronRight />
-              </Button>
-            </div>
-          </div>
+      {session && (
+        <div className="xl:hidden">
+          <Card className="p-4">
+            <RoutineMiniCalendar userId={session.user.id} selected={selected} onSelect={selectDay} />
+          </Card>
+        </div>
+      )}
+      <div id="routine-day">
+        <Card className="p-4 sm:p-5">
+          <h2 className="text-base font-semibold capitalize">{selectedLabel}</h2>
           {error ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">
+            <div className="mt-4 text-sm text-muted-foreground">
               <p>{t('errors.loadFailed')}</p>
               <Button
                 className="mt-3"
@@ -151,80 +129,7 @@ export function RoutinePage() {
                 {t('common.retry')}
               </Button>
             </div>
-          ) : !loaded ? (
-            <p className="py-16 text-center text-sm text-muted-foreground" role="status">
-              {t('common.loading')}
-            </p>
-          ) : (
-            <>
-              <div className="grid grid-cols-7 gap-1 sm:gap-2" aria-label={monthLabel}>
-                {weekdays.map((weekday) => (
-                  <span
-                    key={weekday}
-                    className="py-2 text-center text-[11px] font-semibold text-muted-foreground uppercase sm:text-xs"
-                  >
-                    {dayLabel(weekday)}
-                  </span>
-                ))}
-                {days.map((date, index) => {
-                  if (!date) return <span key={`blank-${index}`} aria-hidden="true" />
-                  const progress = dayProgress(date, habits, changes, completions, entries[date], clockToday)
-                  const statusLabel =
-                    progress.status === 'done'
-                      ? t('calendar.done')
-                      : progress.status === 'missed'
-                        ? t('calendar.missed')
-                        : progress.total
-                          ? t('routine.progress', { done: progress.done, total: progress.total })
-                          : t(date > clockToday ? 'calendar.future' : 'calendar.unmarked')
-                  return (
-                    <button
-                      key={date}
-                      type="button"
-                      onClick={() => selectDay(date)}
-                      aria-pressed={selected === date}
-                      aria-label={`${new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(parseISODate(date))}: ${statusLabel}`}
-                      className={cn(
-                        'relative flex aspect-square min-h-10 flex-col items-center justify-center rounded-md border text-sm font-semibold tabular transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:min-h-14',
-                        progress.status === 'done'
-                          ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-500 dark:text-slate-950'
-                          : progress.status === 'missed'
-                            ? 'border-rose-600 bg-rose-600 text-white dark:border-rose-500 dark:bg-rose-500 dark:text-slate-950'
-                            : 'border-border bg-secondary/40 text-foreground',
-                        selected === date && 'ring-2 ring-primary ring-offset-2 ring-offset-card',
-                        date > clockToday && 'opacity-60'
-                      )}
-                    >
-                      {Number(date.slice(-2))}
-                      {progress.total > 0 && (
-                        <span className="text-[10px] font-normal leading-none">
-                          {progress.done}/{progress.total}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
-                <span className="flex items-center gap-2">
-                  <i className="size-3 rounded-sm bg-blue-600" />
-                  {t('calendar.done')}
-                </span>
-                <span className="flex items-center gap-2">
-                  <i className="size-3 rounded-sm bg-rose-600" />
-                  {t('calendar.missed')}
-                </span>
-                <span className="flex items-center gap-2">
-                  <i className="size-3 rounded-sm border bg-secondary" />
-                  {t('calendar.unmarked')}
-                </span>
-              </div>
-            </>
-          )}
-        </Card>
-        <Card className="p-4 sm:p-5">
-          <h2 className="text-base font-semibold capitalize">{selected ? selectedLabel : t('calendar.selectDay')}</h2>
-          {selected && loaded ? (
+          ) : loaded ? (
             <>
               <p className="mt-1 text-sm text-muted-foreground">
                 {selectedProgress?.total
@@ -288,7 +193,7 @@ export function RoutinePage() {
                   <Field label={t('calendar.note')}>
                     <textarea
                       value={note}
-                      onChange={(event) => setNote(event.target.value)}
+                      onChange={(event) => setNoteEdit({ date: selected, value: event.target.value })}
                       maxLength={500}
                       disabled={Boolean(savingLegacy)}
                       placeholder={t('calendar.noteHint')}
@@ -324,11 +229,13 @@ export function RoutinePage() {
               )}
             </>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">{t('routine.selectHint')}</p>
+            <p className="mt-2 text-sm text-muted-foreground" role="status">
+              {t('common.loading')}
+            </p>
           )}
         </Card>
       </div>
-      <Card className="p-4 sm:p-5">
+      <Card id="routine-habits" className="p-4 sm:p-5">
         <div className="mb-4 flex items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">{t('routine.yourHabits')}</h2>
           <span className="text-xs text-muted-foreground">{t('routine.activeCount', { count: active.length })}</span>

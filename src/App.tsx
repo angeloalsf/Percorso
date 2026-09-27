@@ -34,13 +34,14 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/finances" element={<FinancePage />} />
               <Route
-                path="/calendar"
+                path="/routine"
                 element={
                   <Suspense fallback={<PageSkeleton />}>
                     <RoutinePage />
                   </Suspense>
                 }
               />
+              <Route path="/calendar" element={<Navigate to="/routine" replace />} />
               {/* Bank-account drill-down: list → account (tabs) → one item. */}
               <Route path="/finances/accounts/:accountId" element={<AccountDetailPage />} />
               <Route path="/finances/accounts/:accountId/:kind/:itemId" element={<AccountItemPage />} />

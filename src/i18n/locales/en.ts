@@ -66,6 +66,7 @@ export const en = {
     home: 'Home',
     finances: 'Finances',
     calendar: 'Routine',
+    routine: 'Routine',
     settings: 'Settings'
   },
   home: {
@@ -134,7 +135,10 @@ export const en = {
   },
   routine: {
     title: 'Routine',
-    intro: 'Make room for what matters. Plan habits, mark each day, and see your progress in the calendar.',
+    intro: 'Plan and track your habits day by day.',
+    dayCalendar: 'Routine by day',
+    complete: 'Complete',
+    partial: 'Partial',
     addHabit: 'New habit',
     editHabit: 'Edit habit',
     yourHabits: 'Your habits',

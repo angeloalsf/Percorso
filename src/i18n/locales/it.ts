@@ -65,6 +65,7 @@ export const it: typeof en = {
     home: 'Inizio',
     finances: 'Finanze',
     calendar: 'Abitudini',
+    routine: 'Abitudini',
     settings: 'Impostazioni'
   },
   home: {
@@ -133,7 +134,10 @@ export const it: typeof en = {
   },
   routine: {
     title: 'La tua routine',
-    intro: 'Fai spazio a ciò che conta. Pianifica le abitudini, segna ogni giorno e segui i progressi nel calendario.',
+    intro: 'Organizza e segui le tue abitudini giorno per giorno.',
+    dayCalendar: 'Abitudini per giorno',
+    complete: 'Completo',
+    partial: 'Parziale',
     addHabit: 'Nuova abitudine',
     editHabit: 'Modifica abitudine',
     yourHabits: 'Le tue abitudini',

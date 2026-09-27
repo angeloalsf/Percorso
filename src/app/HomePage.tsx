@@ -193,7 +193,7 @@ export function HomePage() {
         </div>
         <Card className="p-4">
           <Link
-            to="/calendar"
+            to="/routine"
             className="flex items-center gap-3 rounded-lg transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
