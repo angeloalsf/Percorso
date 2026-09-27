@@ -24,7 +24,7 @@ function Shell({ userId }: { userId: string }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [financeTab, setFinanceTab] = useState('dashboard')
-  const inFinances = pathname.startsWith('/finances')
+  const needsFinance = pathname === '/' || pathname.startsWith('/finances')
   const financeStatus = useFinanceStore((s) => s.status)
   const fullName = useProfile((s) => s.fullName)
   const firstName = fullName.trim().split(/\s+/)[0]
@@ -44,11 +44,11 @@ function Shell({ userId }: { userId: string }) {
   }, [userId])
 
   useEffect(() => {
-    if (inFinances) void useFinanceStore.getState().load()
-  }, [inFinances, userId])
+    if (needsFinance) void useFinanceStore.getState().load()
+  }, [needsFinance, userId])
 
-  const failed = inFinances && financeStatus === 'error'
-  const ready = !inFinances || financeStatus === 'ready'
+  const failed = needsFinance && financeStatus === 'error'
+  const ready = !needsFinance || financeStatus === 'ready'
 
   const retry = (): void => {
     useFinanceStore.getState().reset()

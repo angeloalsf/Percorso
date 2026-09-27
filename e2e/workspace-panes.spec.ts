@@ -10,6 +10,11 @@ test('desktop panes collapse and reopen from their controls', async ({ page }) =
   const dayView = page.getByRole('complementary', { name: 'Day view' })
 
   await expect(explorer).toBeVisible()
+  await rail.getByRole('button', { name: 'Home' }).click()
+  await expect(explorer).toHaveCount(0)
+  await rail.getByRole('button', { name: 'Home' }).click()
+  await expect(explorer).toBeVisible()
+  await rail.getByRole('button', { name: 'Finances' }).click()
   await rail.getByRole('button', { name: 'Finances' }).click()
   await expect(explorer).toHaveCount(0)
   await rail.getByRole('button', { name: 'Finances' }).click()

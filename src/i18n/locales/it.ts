@@ -62,9 +62,26 @@ export const it: typeof en = {
     errorGeneric: 'Qualcosa è andato storto. Riprova.'
   },
   nav: {
+    home: 'Inizio',
     finances: 'Finanze',
     calendar: 'Calendario',
     settings: 'Impostazioni'
+  },
+  home: {
+    greeting: 'Il tuo quadro generale.',
+    greetingName: 'Il tuo quadro generale, {name}.',
+    intro: 'Un riepilogo del denaro e dei dati che meritano attenzione.',
+    onPage: 'In questa pagina',
+    monthSummary: 'Riepilogo del mese',
+    incomeLessExpenses: 'Entrate meno uscite',
+    inFocus: 'In evidenza',
+    monthSignals: 'Segnali del mese',
+    categorizedSpending: 'Spese per categoria di questo mese',
+    healthHint: 'Vedi i fattori di questo punteggio in Finanze.',
+    emptyFinance: 'Aggiungi un conto o una transazione per vedere la salute finanziaria.',
+    calendarGoals: 'Obiettivi del calendario',
+    calendarHint: 'Le registrazioni quotidiane di questo mese.',
+    viewCalendar: 'Vedi calendario'
   },
   workspace: {
     mainNavigation: 'Navigazione principale',

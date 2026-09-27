@@ -3,6 +3,7 @@ import { login, openFinanceSection, parseMoney } from './utils'
 
 test('adding an expense reduces net worth by the transaction amount', async ({ page }) => {
   await login(page)
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Finances' }).click()
 
   const netWorth = () =>
     page

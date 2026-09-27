@@ -63,9 +63,26 @@ export const en = {
     errorGeneric: 'Something went wrong. Try again.'
   },
   nav: {
+    home: 'Home',
     finances: 'Finances',
     calendar: 'Calendar',
     settings: 'Settings'
+  },
+  home: {
+    greeting: 'Your overview.',
+    greetingName: 'Your overview, {name}.',
+    intro: 'A summary of your money and the records worth a closer look.',
+    onPage: 'On this page',
+    monthSummary: 'Monthly summary',
+    incomeLessExpenses: 'Income minus expenses',
+    inFocus: 'In focus',
+    monthSignals: 'Signals from this month',
+    categorizedSpending: 'Categorized spending this month',
+    healthHint: 'See the factors behind this score in Finances.',
+    emptyFinance: 'Add an account or transaction to see your financial health.',
+    calendarGoals: 'Calendar goals',
+    calendarHint: 'Your daily records this month.',
+    viewCalendar: 'View calendar'
   },
   workspace: {
     mainNavigation: 'Main navigation',

@@ -2,10 +2,13 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
+  Activity,
   CalendarDays,
+  CalendarCheck,
   ChartNoAxesCombined,
   CreditCard,
   FolderOpen,
+  House,
   Landmark,
   LayoutDashboard,
   PanelRightOpen,
@@ -33,6 +36,7 @@ const FINANCE_SECTIONS: { id: string; labelKey: TKey; icon: typeof Wallet }[] = 
 ]
 
 const MOBILE_NAV: { to: string; icon: typeof Wallet; labelKey: TKey }[] = [
+  { to: '/', icon: House, labelKey: 'nav.home' },
   { to: '/finances', icon: Wallet, labelKey: 'nav.finances' },
   { to: '/calendar', icon: CalendarDays, labelKey: 'nav.calendar' },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' }
@@ -56,16 +60,21 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
   const currency = useProfile((s) => s.currency)
   const language = usePrefs((s) => s.language)
   const inFinances = pathname.startsWith('/finances')
+  const inHome = pathname === '/'
   const section = pathname.startsWith('/finances/accounts/') ? 'accounts' : financeTab
   const currentFinanceItem = FINANCE_SECTIONS.find((item) => item.id === section)
-  const CurrentIcon = inFinances
-    ? (currentFinanceItem?.icon ?? Wallet)
-    : pathname === '/calendar'
-      ? CalendarDays
-      : Settings
-  const activeLabel = inFinances
-    ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
-    : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
+  const CurrentIcon = inHome
+    ? House
+    : inFinances
+      ? (currentFinanceItem?.icon ?? Wallet)
+      : pathname === '/calendar'
+        ? CalendarDays
+        : Settings
+  const activeLabel = inHome
+    ? t('nav.home')
+    : inFinances
+      ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
+      : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
   const sectionGroup = inFinances ? t('nav.finances') : 'Percorso'
   const handleRailAction = (active: boolean, action: () => void): void => {
     if (active) setExplorerOpen((open) => !open)
@@ -99,6 +108,19 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
           className="hidden min-h-0 flex-col items-center gap-2 rounded-lg border bg-card py-3 lg:flex"
           aria-label={t('workspace.mainNavigation')}
         >
+          <button
+            type="button"
+            title={t('nav.home')}
+            aria-label={t('nav.home')}
+            aria-current={inHome ? 'page' : undefined}
+            onClick={() => handleRailAction(inHome, () => navigate('/'))}
+            className={cn(
+              'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+              inHome ? 'bg-accent text-primary' : 'text-muted-foreground'
+            )}
+          >
+            <House className="size-5" />
+          </button>
           <button
             type="button"
             title={t('nav.finances')}
@@ -152,26 +174,65 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
               <FolderOpen className="size-4" />
               {t('workspace.explore')}
             </div>
-            <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-              {t('nav.finances')}
-            </p>
-            <nav className="space-y-0.5" aria-label={t('nav.finances')}>
-              {FINANCE_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => openFinance(id)}
-                  aria-current={inFinances && section === id ? 'page' : undefined}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-                    inFinances && section === id ? 'bg-accent font-medium text-primary' : 'text-muted-foreground'
-                  )}
+            {inHome ? (
+              <>
+                <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('nav.home')}
+                </p>
+                <NavLink
+                  to="/"
+                  end
+                  className="flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-primary"
                 >
-                  <Icon className="size-4 shrink-0" />
-                  {t(labelKey)}
-                </button>
-              ))}
-            </nav>
+                  <LayoutDashboard className="size-4" />
+                  {t('common.overview')}
+                </NavLink>
+                <div className="my-4 border-t" />
+                <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('home.onPage')}
+                </p>
+                {(
+                  [
+                    ['home-month', 'home.monthSummary', ChartNoAxesCombined],
+                    ['home-focus', 'home.inFocus', Activity],
+                    ['home-calendar', 'home.calendarGoals', CalendarCheck]
+                  ] as const
+                ).map(([id, labelKey, Icon]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {t(labelKey)}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <p className="mb-2 px-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t('nav.finances')}
+                </p>
+                <nav className="space-y-0.5" aria-label={t('nav.finances')}>
+                  {FINANCE_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => openFinance(id)}
+                      aria-current={inFinances && section === id ? 'page' : undefined}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
+                        inFinances && section === id ? 'bg-accent font-medium text-primary' : 'text-muted-foreground'
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      {t(labelKey)}
+                    </button>
+                  ))}
+                </nav>
+              </>
+            )}
           </aside>
         )}
 
@@ -214,7 +275,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-3">
+        <div className="mx-auto grid max-w-md grid-cols-4">
           {MOBILE_NAV.map(({ to, icon: Icon, labelKey }) => (
             <NavLink
               key={to}
