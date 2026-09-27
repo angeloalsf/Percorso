@@ -29,9 +29,6 @@ export function FinancePage() {
     <div>
       {tab === 'dashboard' && (
         <div className="mb-5 hidden lg:block">
-          <p className="mb-1 text-xs font-semibold tracking-wider text-primary uppercase">
-            Percorso / {t('nav.finances')}
-          </p>
           <h1 className="text-2xl font-semibold tracking-tight">{t('workspace.dashboardTitle')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t('workspace.dashboardIntro')}</p>
         </div>

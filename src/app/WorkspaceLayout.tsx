@@ -77,6 +77,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
       : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
   const sectionGroup = inFinances ? t('nav.finances') : 'Percorso'
+  const showTabDivider = !inHome && !inFinances
   useLayoutEffect(() => {
     contentRef.current?.scrollTo(0, 0)
     window.scrollTo(0, 0)
@@ -242,11 +243,11 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
         )}
 
         <main className="min-w-0 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-lg lg:border lg:bg-card">
-          <div className={cn('z-10 hidden h-11 shrink-0 items-center bg-card lg:flex', !inHome && 'border-b')}>
+          <div className={cn('z-10 hidden h-11 shrink-0 items-center bg-card lg:flex', showTabDivider && 'border-b')}>
             <span
               className={cn(
                 'flex h-full items-center gap-2 px-4 text-sm font-medium',
-                !inHome && 'border-r border-b-2 border-b-primary'
+                showTabDivider && 'border-r border-b-2 border-b-primary'
               )}
             >
               <CurrentIcon className="size-4 text-primary" />
