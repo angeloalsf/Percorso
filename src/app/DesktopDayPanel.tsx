@@ -60,10 +60,10 @@ export function DesktopDayPanel({
 
   return (
     <aside
-      className="hidden min-h-0 overflow-y-auto rounded-lg border bg-card xl:block"
+      className="hidden min-h-0 flex-col overflow-hidden rounded-lg border bg-card xl:flex"
       aria-label={t('workspace.dayView')}
     >
-      <div className="sticky top-0 z-10 flex h-11 items-center justify-between border-b bg-card pr-2 pl-5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b bg-card pr-2 pl-5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
         <span>{t('workspace.dayView')}</span>
         <button
           type="button"
@@ -75,7 +75,7 @@ export function DesktopDayPanel({
           <X className="size-4" />
         </button>
       </div>
-      <div className="space-y-6 p-5">
+      <div className="mx-1 mb-1 min-h-0 flex-1 space-y-6 overflow-y-auto rounded-b-md p-5">
         <div>
           <h2 className="text-base font-semibold capitalize">{formatDate(today, lang, 'weekday')}</h2>
           <p className="mt-1 text-xs text-muted-foreground">{t('workspace.daySubtitle')}</p>
