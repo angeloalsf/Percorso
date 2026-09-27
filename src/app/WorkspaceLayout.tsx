@@ -62,6 +62,8 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
   const language = usePrefs((s) => s.language)
   const inFinances = pathname.startsWith('/finances')
   const inHome = pathname === '/'
+  const inRoutine = pathname === '/calendar'
+  const explorerVisible = explorerOpen && !inRoutine
   const section = pathname.startsWith('/finances/accounts/') ? 'accounts' : financeTab
   const currentFinanceItem = FINANCE_SECTIONS.find((item) => item.id === section)
   const CurrentIcon = inHome
@@ -77,7 +79,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       ? t(currentFinanceItem?.labelKey ?? 'nav.finances')
       : t(pathname === '/calendar' ? 'nav.calendar' : 'nav.settings')
   const sectionGroup = inFinances ? t('nav.finances') : 'Percorso'
-  const showTabDivider = !inHome && !inFinances
+  const showTabDivider = !inHome && !inFinances && !inRoutine
   useLayoutEffect(() => {
     contentRef.current?.scrollTo(0, 0)
     window.scrollTo(0, 0)
@@ -100,10 +102,10 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
       <div
         className={cn(
           'min-h-0 flex-1 lg:grid lg:gap-[3px]',
-          explorerOpen ? 'lg:grid-cols-[3.25rem_14rem_minmax(0,1fr)]' : 'lg:grid-cols-[3.25rem_minmax(0,1fr)]',
-          explorerOpen && dayViewOpen
+          explorerVisible ? 'lg:grid-cols-[3.25rem_14rem_minmax(0,1fr)]' : 'lg:grid-cols-[3.25rem_minmax(0,1fr)]',
+          explorerVisible && dayViewOpen
             ? 'xl:grid-cols-[3.25rem_15rem_minmax(0,1fr)_19rem]'
-            : explorerOpen
+            : explorerVisible
               ? 'xl:grid-cols-[3.25rem_15rem_minmax(0,1fr)]'
               : dayViewOpen
                 ? 'xl:grid-cols-[3.25rem_minmax(0,1fr)_19rem]'
@@ -146,7 +148,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
               title={t('nav.calendar')}
               aria-label={t('nav.calendar')}
               aria-current={pathname === '/calendar' ? 'page' : undefined}
-              onClick={() => handleRailAction(pathname === '/calendar', () => navigate('/calendar'))}
+              onClick={() => navigate('/calendar')}
               className={cn(
                 'flex size-10 items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
                 pathname === '/calendar' ? 'bg-accent text-primary' : 'text-muted-foreground'
@@ -171,7 +173,7 @@ export function WorkspaceLayout({ children, userId, firstName, financeTab, openF
           </div>
         </nav>
 
-        {explorerOpen && (
+        {explorerVisible && (
           <aside
             className="hidden min-h-0 overflow-y-auto rounded-lg border bg-card p-3 lg:block"
             aria-label={t('workspace.explore')}

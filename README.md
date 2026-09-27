@@ -1,9 +1,9 @@
 # Percorso
 
-**Percorso** is a personal workspace with Home, Finances, Calendar and Settings. It connects financial information and the calendar in one place, with per-user data protected by [Supabase](https://supabase.com) Row Level Security.
+**Percorso** is a personal workspace with Home, Finances, Routine and Settings. It connects financial information and daily habits in one place, with per-user data protected by [Supabase](https://supabase.com) Row Level Security.
 
 - **Finances** — accounts, cards, transactions, bills, budgets, goals, loans and consortiums, with cash forecasting and CSV/OFX import.
-- **Calendar** — a daily view alongside the workspace's Home and day pane.
+- **Routine** — schedule habits by weekday, mark individual completions, and review progress in the calendar, Home and day pane. Earlier whole-day marks remain available.
 
 Three languages (English, Brazilian Portuguese, Italian — compile-time-checked dictionaries), dark & light themes, installable on a phone's home screen via the browser's "Add to Home Screen".
 
@@ -38,13 +38,13 @@ The Google OAuth client ID/secret live **in the Supabase dashboard**, not in thi
 
 ### 3. Database schema
 
-Apply [supabase/migrations/20260720120000_init.sql](supabase/migrations/20260720120000_init.sql) to your project. Either:
+Apply all files in [supabase/migrations](supabase/migrations) in filename order to your project. Either:
 
 - **Dashboard**: SQL Editor → paste the file → Run, or
 - **CLI**: `npx supabase link --project-ref <your-ref>` then `npx supabase db push`, or
 - **Fully local**: `npx supabase start` then `npx supabase db reset` (applies migrations **and** the local seed — see [Local dev with seed data](#6-local-development-with-seed-data)).
 
-This creates `profiles` (incl. `is_admin`), `accounts`, `categories`, `transactions`, `budgets` — all with RLS enabled. Writes are restricted to `auth.uid() = user_id`; reads are the same, **plus** admins may read every user's rows (see [Admin](#admin)). A trigger creates a `profiles` row for each new signup (email or Google).
+This creates the Finance, Routine and profile tables with RLS enabled. Writes are restricted to `auth.uid() = user_id`; the new Routine tables also allow admin reads (see [Admin](#admin)). A trigger creates a `profiles` row for each new signup (email or Google).
 
 ### 4. Auth configuration (Supabase dashboard)
 
@@ -86,7 +86,7 @@ npx supabase db reset       # applies migrations, then runs the seed scripts
 | File                                                       | What it seeds                                                                                                                                                                                         | Login                                         |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | [supabase/seed/admin.sql](supabase/seed/admin.sql)         | An **admin** user (`is_admin = true`)                                                                                                                                                                 | `admin@percorso.local` / `admin-percorso-123` |
-| [supabase/seed/test-data.sql](supabase/seed/test-data.sql) | A **test** user + full demo finance data (accounts, categories, a credit card, ~6 months of bank _and_ card transactions, a monthly transfer, budgets, goals, bills) to populate every Finance screen | `test@percorso.local` / `test-percorso-123`   |
+| [supabase/seed/test-data.sql](supabase/seed/test-data.sql) | A **test** user + six months of Finances and four months of Routine habits and completions | `test@percorso.local` / `test-percorso-123`   |
 
 You can also run either file by hand against a **throwaway** database:
 
@@ -96,7 +96,9 @@ psql "$DATABASE_URL" -f supabase/seed/test-data.sql   # local db URL, or a dispo
 
 (The seeds insert real `auth.users` rows with bcrypt passwords, so they must run as the `postgres`/superuser role — `db reset`, `psql`, or the Dashboard SQL Editor of a disposable project. Change the credentials before use.)
 
-**Populating an existing account instead:** [supabase/seed/demo-data.sql](supabase/seed/demo-data.sql) loads the same dataset for an **existing** user (edit the `uid` at the top to the account's id, from Dashboard → Authentication → Users). It creates no `auth.users` row or password. It deletes that user's existing finance rows first, so use it only for a disposable account. It is deliberately _not_ in `sql_paths`, so `db reset` never runs it.
+**Populating an existing account instead:** [supabase/seed/demo-data.sql](supabase/seed/demo-data.sql) loads the same dataset for an **existing** user (edit the `uid` at the top to the account's id, from Dashboard → Authentication → Users). It creates no `auth.users` row or password. It deletes that user's existing Finance and Routine rows first, so use it only for a disposable account. It is deliberately _not_ in `sql_paths`, so `db reset` never runs it.
+
+The Routine behavior and history rules are documented in [docs/ROUTINE.md](docs/ROUTINE.md).
 
 ### 7. Run
 

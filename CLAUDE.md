@@ -1,6 +1,6 @@
 # CLAUDE.md — Percorso project context
 
-Percorso is a personal workspace (React SPA) with Home, Finances, Calendar and Settings, backed by Supabase (Postgres + Auth). Finance rows are protected by per-user RLS; normal app queries also filter by the current `user_id`, including for admins.
+Percorso is a personal workspace (React SPA) with Home, Finances, Routine and Settings, backed by Supabase (Postgres + Auth). Finance and Routine rows are protected by per-user RLS; normal app queries also filter by the current `user_id`, including for admins.
 
 
 ## Commands
@@ -38,6 +38,8 @@ src/
 │                        # SettingsPage: profile name, language, theme, sign-out
 ├── features/finance/    # store/ (Supabase-backed Zustand, split by entity) + FinancePage + sections/ (tabs)
 │                        #   + accounts/ = the routed bank-account drill-down (see below)
+├── features/routine/    # RoutinePage, dated-habit store and calendar derivations
+├── features/calendar/   # legacy whole-day marks and Monday-first calendar grid
 ├── components/ui/       # shadcn-style primitives; components/charts/ = dependency-free SVG
 ├── i18n/                # typed engine + locales/{en,pt-br,it}.ts
 ├── state/               # prefs.ts (language+theme → localStorage), profile.ts (profiles row)
@@ -45,6 +47,8 @@ src/
 ```
 
 ### Data flow
+
+- **Routine** (`features/routine/`): `habits` stores a name, original weekdays and start date; `habit_schedule_changes` versions weekday edits from their effective date; `habit_completions` holds only completed habit/date pairs. Missed past days and blue/red calendar cells are derived from these sources. Archiving is effective on its date and keeps earlier completions. The old `calendar_days` rows remain readable and editable for dates without scheduled habits. Home and the desktop day pane load current-month completions; the Routine page loads the selected month. All requests filter by `user_id`, and stores reset on logout.
 
 - **Stores** (`features/finance/store/`, `state/profile.ts`) are plain Zustand stores with `status: idle|loading|ready|error`, a `load()` guarded against re-entry, and `reset()`. `AppLayout`'s Shell loads them when a session exists and resets them on unmount (sign-out); it renders a skeleton until the finance store is `ready` and an error panel with retry if it fails.
 - **`features/finance/store/` layout**: `types.ts` (every domain type), `rows.ts` (the `rowTo*` snake_case→camelCase mappers), `store.ts` (the Zustand store itself + `load`/`reset`, plus the `state()`/`patch()` helpers every entity module reads/writes through), one file per entity's mutations + entity-specific derived values (`accounts.ts`, `cards.ts`, `bills.ts`, `plans.ts` — loans & consórcios, `budgets.ts`, `goals.ts`, `transactions.ts`, `categories.ts`), and `derived.ts` for cross-entity dashboard analytics (insights, recurring, health score, net worth). `index.ts` re-exports the lot, so every other file still imports from `'../store'` / `'./store'` unchanged — that path now resolves to the directory. `store.ts`'s `load()` calls `cards.ts`'s `syncCardBills`, which is the one intentional cycle in the graph (function-body-only, not top-level, so it's safe).

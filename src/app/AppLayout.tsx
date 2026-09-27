@@ -8,6 +8,7 @@ import { PageSkeleton } from '@/components/ui/page-skeleton'
 import { Splash } from '@/components/ui/splash'
 import { useCalendarStore } from '@/features/calendar/store'
 import { useFinanceStore } from '@/features/finance/store'
+import { useRoutineStore } from '@/features/routine/store'
 import { useT } from '@/i18n'
 import { useProfile } from '@/state/profile'
 
@@ -39,6 +40,7 @@ function Shell({ userId }: { userId: string }) {
     return () => {
       useFinanceStore.getState().reset()
       useCalendarStore.getState().reset()
+      useRoutineStore.getState().reset()
       useProfile.getState().reset()
     }
   }, [userId])

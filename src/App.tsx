@@ -14,8 +14,8 @@ import { AccountDetailPage } from '@/features/finance/accounts/AccountDetailPage
 import { AccountItemPage } from '@/features/finance/accounts/AccountItemPage'
 import { PageSkeleton } from '@/components/ui/page-skeleton'
 
-const CalendarPage = lazy(() =>
-  import('@/features/calendar/CalendarPage').then((module) => ({ default: module.CalendarPage }))
+const RoutinePage = lazy(() =>
+  import('@/features/routine/RoutinePage').then((module) => ({ default: module.RoutinePage }))
 )
 
 export default function App() {
@@ -37,7 +37,7 @@ export default function App() {
                 path="/calendar"
                 element={
                   <Suspense fallback={<PageSkeleton />}>
-                    <CalendarPage />
+                    <RoutinePage />
                   </Suspense>
                 }
               />

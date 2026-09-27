@@ -228,6 +228,21 @@ begin
     (uid, 'Aluguel próximo mês', 1200.00, (month_start + interval '1 month')::date + 1, 'pending', false),
     (uid, 'Curso de idiomas', 180.00, current_date + 12, 'pending', true);
 
+  -- ---- Routine: four months of scheduled habits with ordinary missed days ----
+  with new_habits as (
+    insert into public.habits(user_id, name, weekdays, start_date) values
+      (uid, 'Beber água', array[0,1,2,3,4,5,6]::smallint[], (month_start - interval '3 months')::date),
+      (uid, 'Treinar', array[0,2,4]::smallint[], (month_start - interval '3 months')::date),
+      (uid, 'Estudar italiano', array[1,3,5]::smallint[], (month_start - interval '3 months')::date)
+    returning id, user_id, name, weekdays, start_date
+  )
+  insert into public.habit_completions(habit_id, user_id, date)
+  select h.id, h.user_id, d::date
+  from new_habits h
+  cross join lateral generate_series(h.start_date, current_date, interval '1 day') d
+  where (extract(isodow from d)::int - 1) = any(h.weekdays)
+    and mod(extract(day from d)::int + char_length(h.name), 7) <> 0;
+
   raise notice 'Seeded full demo dataset (finance + cards + goals + bills) for existing user %', uid;
 end;
 $$;

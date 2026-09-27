@@ -1,10 +1,12 @@
 import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarCheck, ChartPie, ChevronRight, HeartPulse } from 'lucide-react'
+import { CalendarCheck, ChartPie, Check, ChevronRight, HeartPulse } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/auth/AuthProvider'
 import { Card } from '@/components/ui/card'
-import { monthSummary } from '@/features/calendar/dates'
 import { useCalendarStore } from '@/features/calendar/store'
+import { completionKey, routineMonthSummary, scheduledHabits } from '@/features/routine/dates'
+import { useRoutineStore } from '@/features/routine/store'
 import {
   accountBalance,
   computeHealthScore,
@@ -13,7 +15,7 @@ import {
   useFinanceStore
 } from '@/features/finance/store'
 import { useLang, useT } from '@/i18n'
-import { currentMonthKey } from '@/lib/dates'
+import { currentMonthKey, todayISO } from '@/lib/dates'
 import { formatCurrency, formatMonthLong } from '@/lib/format'
 import { useProfile } from '@/state/profile'
 
@@ -27,13 +29,25 @@ export function HomePage() {
   const currency = useProfile((s) => s.currency)
   const { accounts, transactions, categories, budgets } = useFinanceStore()
   const entries = useCalendarStore((s) => s.entries)
+  const {
+    habits,
+    changes,
+    completions,
+    status: routineStatus,
+    loadedMonths: routineMonths,
+    savingKey
+  } = useRoutineStore()
   const month = currentMonthKey()
+  const today = todayISO()
   const calendarLoaded = useCalendarStore((s) => Boolean(s.loadedMonths[month]))
   const calendarError = useCalendarStore((s) => Boolean(s.errorMonths[month]))
   const money = (value: number) => formatCurrency(value, currency, lang)
 
   useEffect(() => {
-    if (userId) void useCalendarStore.getState().loadMonth(month, userId)
+    if (userId) {
+      void useCalendarStore.getState().loadMonth(month, userId)
+      void useRoutineStore.getState().loadMonth(month, userId)
+    }
   }, [month, userId])
 
   const totals = useMemo(() => monthTotals(transactions, month), [transactions, month])
@@ -61,7 +75,16 @@ export function HomePage() {
         : null
     }
   }, [transactions, categories, month, t])
-  const summary = useMemo(() => monthSummary(month, entries), [month, entries])
+  const summary = useMemo(
+    () => routineMonthSummary(month, habits, changes, completions, entries, today),
+    [month, habits, changes, completions, entries, today]
+  )
+  const todayHabits = useMemo(() => scheduledHabits(today, habits, changes), [today, habits, changes])
+  const toggleHabit = async (habitId: string): Promise<void> => {
+    if (!userId) return
+    const ok = await useRoutineStore.getState().toggleCompletion(habitId, today, userId)
+    if (!ok) toast.error(t('toasts.saveError'))
+  }
   const hasFinanceData = accounts.length > 0 || transactions.length > 0 || budgets.length > 0
   const bandKey = {
     insufficientData: 'finance.healthInsufficient',
@@ -168,26 +191,59 @@ export function HomePage() {
           </h2>
           <span className="text-xs text-muted-foreground capitalize">{formatMonthLong(month, lang)}</span>
         </div>
-        <Link
-          to="/calendar"
-          className="flex items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
-            <CalendarCheck className="size-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <strong className="block text-sm">
-              {calendarLoaded
-                ? t('calendar.monthSummary', summary)
-                : calendarError
-                  ? t('errors.loadFailed')
-                  : t('common.loading')}
-            </strong>
-            <small className="text-xs text-muted-foreground">{t('home.calendarHint')}</small>
-          </span>
-          <span className="hidden text-xs font-medium text-primary sm:inline">{t('home.viewCalendar')}</span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </Link>
+        <Card className="p-4">
+          <Link
+            to="/calendar"
+            className="flex items-center gap-3 rounded-lg transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
+              <CalendarCheck className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block text-sm">
+                {calendarLoaded && routineMonths[month] && routineStatus === 'ready'
+                  ? t('calendar.monthSummary', summary)
+                  : calendarError || routineStatus === 'error'
+                    ? t('errors.loadFailed')
+                    : t('common.loading')}
+              </strong>
+              <small className="text-xs text-muted-foreground">{t('home.calendarHint')}</small>
+            </span>
+            <span className="hidden text-xs font-medium text-primary sm:inline">{t('home.viewCalendar')}</span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </Link>
+          {routineStatus === 'ready' && routineMonths[month] && (
+            <div className="mt-4 border-t pt-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">{t('routine.today')}</p>
+              {todayHabits.length ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {todayHabits.map((habit) => {
+                    const checked = Boolean(completions[completionKey(habit.id, today)])
+                    return (
+                      <button
+                        key={habit.id}
+                        type="button"
+                        aria-pressed={checked}
+                        disabled={Boolean(savingKey)}
+                        onClick={() => void toggleHabit(habit.id)}
+                        className="flex min-h-10 items-center gap-2 rounded-md border px-3 text-left text-sm transition-colors hover:bg-accent disabled:opacity-60"
+                      >
+                        <span
+                          className={`flex size-4 shrink-0 items-center justify-center rounded border ${checked ? 'border-primary bg-primary text-primary-foreground' : ''}`}
+                        >
+                          {checked && <Check className="size-3" />}
+                        </span>
+                        <span className={checked ? 'text-muted-foreground line-through' : ''}>{habit.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t('routine.todayEmpty')}</p>
+              )}
+            </div>
+          )}
+        </Card>
       </section>
     </div>
   )

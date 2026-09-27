@@ -65,7 +65,7 @@ export const en = {
   nav: {
     home: 'Home',
     finances: 'Finances',
-    calendar: 'Calendar',
+    calendar: 'Routine',
     settings: 'Settings'
   },
   home: {
@@ -80,9 +80,9 @@ export const en = {
     categorizedSpending: 'Categorized spending this month',
     healthHint: 'See the factors behind this score in Finances.',
     emptyFinance: 'Add an account or transaction to see your financial health.',
-    calendarGoals: 'Calendar goals',
-    calendarHint: 'Your daily records this month.',
-    viewCalendar: 'View calendar'
+    calendarGoals: 'Your routine',
+    calendarHint: 'Today’s habits and this month’s progress.',
+    viewCalendar: 'View routine'
   },
   workspace: {
     mainNavigation: 'Main navigation',
@@ -131,6 +131,33 @@ export const en = {
     markMissed: 'Mark red',
     clear: 'Clear this day',
     yesterdayRule: 'You can mark yesterday and earlier dates. Today opens for marking tomorrow.'
+  },
+  routine: {
+    title: 'Routine',
+    intro: 'Make room for what matters. Plan habits, mark each day, and see your progress in the calendar.',
+    addHabit: 'New habit',
+    editHabit: 'Edit habit',
+    yourHabits: 'Your habits',
+    activeCount: '{count} active',
+    archivedCount: '{count} archived habits remain in history',
+    emptyHint: 'Create a habit to start tracking your days.',
+    noHabitsDay: 'No habits scheduled for this day.',
+    progress: '{done} of {total} habits completed',
+    selectHint: 'Select a day to see its habits.',
+    nameHint: 'e.g. Exercise, read, study Italian',
+    days: 'Days of the week',
+    required: 'Enter a name and select at least one day.',
+    saveName: 'Save name',
+    saveDays: 'Save days',
+    scheduleHint: 'A new schedule takes effect today; earlier days keep their original schedule.',
+    archive: 'Archive habit',
+    archiveConfirm: 'Archive {name}? Earlier completions stay in the calendar.',
+    futureRule: 'Upcoming days can be planned, but not completed yet.',
+    previousMark: 'Earlier day mark',
+    legacyHint: 'There were no habits scheduled. Earlier whole-day marks remain visible here.',
+    today: 'Today',
+    todayEmpty: 'No habits scheduled today.',
+    openRoutine: 'Open routine'
   },
   finance: {
     tabDashboard: 'Dashboard',
