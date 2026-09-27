@@ -6,6 +6,6 @@ import { Splash } from '@/components/ui/splash'
 export function AuthGate() {
   const { session, loading } = useAuth()
   if (loading) return <Splash />
-  if (session) return <Navigate to="/finances" replace />
+  if (session) return <Navigate to="/" replace />
   return <Outlet />
 }

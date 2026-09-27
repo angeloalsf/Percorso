@@ -9,11 +9,14 @@ export async function login(page: Page): Promise<void> {
   await page.getByLabel('Email').fill(TEST_EMAIL)
   await page.getByLabel('Password').fill(TEST_PASSWORD)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page).toHaveURL(/\/finances/)
+  await expect(page).toHaveURL(/\/$/)
 }
 
 /** Desktop finance navigation lives in the Explore pane. */
 export async function openFinanceSection(page: Page, name: string): Promise<void> {
+  if (!new URL(page.url()).pathname.startsWith('/finances')) {
+    await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Finances' }).click()
+  }
   await page.getByRole('navigation', { name: 'Finances' }).getByRole('button', { name }).click()
 }
 

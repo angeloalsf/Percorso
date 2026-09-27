@@ -62,9 +62,26 @@ export const ptBR: typeof en = {
     errorGeneric: 'Algo deu errado. Tente novamente.'
   },
   nav: {
+    home: 'Início',
     finances: 'Finanças',
     calendar: 'Calendário',
     settings: 'Ajustes'
+  },
+  home: {
+    greeting: 'Seu panorama.',
+    greetingName: 'Seu panorama, {name}.',
+    intro: 'Um resumo do seu dinheiro e dos registros que merecem atenção.',
+    onPage: 'Nesta página',
+    monthSummary: 'Resumo do mês',
+    incomeLessExpenses: 'Receitas menos despesas',
+    inFocus: 'Em foco',
+    monthSignals: 'Sinais do seu mês',
+    categorizedSpending: 'Gastos categorizados neste mês',
+    healthHint: 'Veja os fatores desta pontuação em Finanças.',
+    emptyFinance: 'Adicione uma conta ou transação para acompanhar sua saúde financeira.',
+    calendarGoals: 'Metas do calendário',
+    calendarHint: 'Seus registros diários deste mês.',
+    viewCalendar: 'Ver calendário'
   },
   workspace: {
     mainNavigation: 'Navegação principal',

@@ -7,6 +7,7 @@ import { SignupPage } from '@/auth/SignupPage'
 import { AppLayout } from '@/app/AppLayout'
 import { ErrorBoundary } from '@/app/ErrorBoundary'
 import { SettingsPage } from '@/app/SettingsPage'
+import { HomePage } from '@/app/HomePage'
 import { Toaster } from '@/components/ui/toaster'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { AccountDetailPage } from '@/features/finance/accounts/AccountDetailPage'
@@ -30,6 +31,7 @@ export default function App() {
             </Route>
             {/* Protected: redirect to /login without a session. */}
             <Route element={<AppLayout />}>
+              <Route path="/" element={<HomePage />} />
               <Route path="/finances" element={<FinancePage />} />
               <Route
                 path="/calendar"
@@ -44,7 +46,7 @@ export default function App() {
               <Route path="/finances/accounts/:accountId/:kind/:itemId" element={<AccountItemPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
-            <Route path="*" element={<Navigate to="/finances" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
         <Toaster />
